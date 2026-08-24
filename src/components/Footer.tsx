@@ -33,6 +33,7 @@ export function Footer() {
           <p className="text-sm font-semibold">Account</p>
           <div className="mt-2 grid gap-1 text-sm text-[var(--muted)]">
             <Link href="/progress">Progress</Link>
+            <Link href="/account">Account</Link>
             <Link href="/settings">Settings</Link>
             <Link href="/about">About the method</Link>
           </div>

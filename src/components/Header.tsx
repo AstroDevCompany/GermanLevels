@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/grammar", label: "Grammar" },
   { href: "/vocabulary", label: "Vocabulary" },
   { href: "/settings", label: "Settings" },
+  { href: "/account", label: "Account" },
 ];
 
 export function Header() {

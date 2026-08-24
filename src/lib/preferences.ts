@@ -1,5 +1,3 @@
-"use client";
-
 export type AccentId = "teal" | "amber" | "violet" | "rose" | "sky";
 
 export type Preferences = {

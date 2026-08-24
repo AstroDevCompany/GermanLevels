@@ -1,5 +1,3 @@
-"use client";
-
 import type { LevelId } from "@/content/types";
 
 export type LessonResult = {
@@ -25,20 +23,24 @@ export type ProgressState = {
 
 const KEY = "germanlevels.progress.v1";
 
+export function emptyProgress(): ProgressState {
+  return { results: {}, starred: [], xp: 0, days: {} };
+}
+
 export function lessonKey(level: string, chapter: string, lesson: string) {
   return `${level}/${chapter}/${lesson}`;
 }
 
 export function loadProgress(): ProgressState {
   if (typeof window === "undefined") {
-    return { results: {}, starred: [], xp: 0, days: {} };
+    return emptyProgress();
   }
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { results: {}, starred: [], xp: 0, days: {} };
-    return { results: {}, starred: [], xp: 0, days: {}, ...JSON.parse(raw) };
+    if (!raw) return emptyProgress();
+    return { ...emptyProgress(), ...JSON.parse(raw) };
   } catch {
-    return { results: {}, starred: [], xp: 0, days: {} };
+    return emptyProgress();
   }
 }
 
@@ -157,7 +159,7 @@ export function toggleStar(state: ProgressState, word: string): ProgressState {
 }
 
 export function resetProgress(): ProgressState {
-  const empty = { results: {}, starred: [], xp: 0, days: {} };
+  const empty = emptyProgress();
   saveProgress(empty);
   return empty;
 }

@@ -7,7 +7,7 @@ import { UserGreeting } from "@/components/UserGreeting";
 import { lessonKey, streak } from "@/lib/progress";
 
 export default function ProgressPage() {
-  const { progress, ready } = useApp();
+  const { progress, ready, user } = useApp();
   const levels = getLevels();
   const completed = Object.values(progress.results).filter((item) => item.completed).length;
 
@@ -16,7 +16,9 @@ export default function ProgressPage() {
       <h1 className="text-4xl font-semibold tracking-tight">Progress</h1>
       <UserGreeting className="mt-2 text-[var(--accent)]" />
       <p className="mt-3 text-[var(--muted)]">
-        Saved on this device. {ready ? `${completed} lesson${completed === 1 ? "" : "s"} done · ${progress.xp} XP · ${streak(progress.days)}-day streak.` : "Loading…"}
+        {user
+          ? `Saved to your account. ${ready ? `${completed} lesson${completed === 1 ? "" : "s"} done · ${progress.xp} XP · ${streak(progress.days)}-day streak.` : "Loading…"}`
+          : `Saved on this device. ${ready ? `${completed} lesson${completed === 1 ? "" : "s"} done · ${progress.xp} XP · ${streak(progress.days)}-day streak.` : "Loading…"}`}
       </p>
       {progress.lastLesson ? (
         <Link
