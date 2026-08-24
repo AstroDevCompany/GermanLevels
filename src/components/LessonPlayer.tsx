@@ -509,12 +509,14 @@ function TrueFalseExercise({
             className={`chip ${
               picked === value
                 ? picked === exercise.answer
-                  ? "feedback-ok border-[var(--ok)]"
-                  : "feedback-bad border-[var(--danger)]"
+                  ? "feedback-ok"
+                  : "feedback-bad"
                 : picked !== null && value === exercise.answer
-                  ? "border-[var(--ok)]"
+                  ? "feedback-ok"
                   : ""
             }`}
+            aria-pressed={picked === value}
+            data-selected={picked === value}
           >
             {value ? "True" : "False"}
           </button>
@@ -577,7 +579,9 @@ function FillBlankExercise({
             <button
               key={option}
               type="button"
-              className={`chip ${placed === option ? "border-[var(--accent)] bg-[color-mix(in_oklab,var(--accent)_12%,transparent)]" : ""}`}
+              className="chip"
+              aria-pressed={placed === option}
+              data-selected={placed === option}
               onClick={() => setPlaced(option)}
             >
               {option}

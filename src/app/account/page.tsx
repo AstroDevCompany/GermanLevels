@@ -69,14 +69,18 @@ export default function AccountPage() {
       <div className="mt-6 flex gap-2">
         <button
           type="button"
-          className={`chip ${mode === "login" ? "border-[var(--accent)]" : ""}`}
+          className="chip"
+          aria-pressed={mode === "login"}
+          data-selected={mode === "login"}
           onClick={() => setMode("login")}
         >
           Log in
         </button>
         <button
           type="button"
-          className={`chip ${mode === "signup" ? "border-[var(--accent)]" : ""}`}
+          className="chip"
+          aria-pressed={mode === "signup"}
+          data-selected={mode === "signup"}
           onClick={() => setMode("signup")}
         >
           Sign up

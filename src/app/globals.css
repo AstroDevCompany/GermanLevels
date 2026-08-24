@@ -195,18 +195,51 @@ html.dark[data-article-colors="on"] .art-das {
 }
 
 .chip {
-  border: 1px solid var(--line);
+  border-width: 1.5px;
+  border-style: solid;
+  border-color: var(--line);
   background: color-mix(in oklab, var(--bg-elev) 88%, transparent);
   border-radius: 999px;
   padding: 0.45rem 0.85rem;
+  color: inherit;
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
-    background 0.2s ease;
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .chip:hover {
   border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+}
+
+.chip[data-selected="true"],
+.chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 28%, transparent);
+}
+
+.chip[data-selected="true"]:hover,
+.chip[aria-pressed="true"]:hover {
+  border-color: var(--accent);
+}
+
+.chip.feedback-ok,
+.chip.feedback-bad {
+  box-shadow: none;
+  color: inherit;
+}
+
+.chip.feedback-ok {
+  border-color: var(--ok);
+  background: color-mix(in oklab, var(--ok) 22%, transparent);
+}
+
+.chip.feedback-bad {
+  border-color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
 }
 
 .drop-slot {

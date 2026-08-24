@@ -50,11 +50,12 @@ export default function SettingsPage() {
           <button
             key={value}
             type="button"
-            className={`chip capitalize ${activeTheme === value ? "border-[var(--accent)]" : ""}`}
+            className="chip capitalize"
+            aria-pressed={activeTheme === value}
+            data-selected={activeTheme === value}
             onClick={() => setTheme(value)}
           >
             {value}
-            {activeTheme === value ? " · on" : ""}
           </button>
         ))}
       </div>
@@ -65,11 +66,12 @@ export default function SettingsPage() {
           <button
             key={accent.id}
             type="button"
-            className={`chip ${prefs.accent === accent.id ? "border-[var(--accent)]" : ""}`}
+            className="chip"
+            aria-pressed={prefs.accent === accent.id}
+            data-selected={prefs.accent === accent.id}
             onClick={() => setPrefs({ ...prefs, accent: accent.id })}
           >
             {accent.label}
-            {prefs.accent === accent.id ? " · on" : ""}
           </button>
         ))}
       </div>
@@ -80,7 +82,9 @@ export default function SettingsPage() {
           <button
             key={size}
             type="button"
-            className={`chip ${prefs.fontScale === size ? "border-[var(--accent)]" : ""}`}
+            className="chip"
+            aria-pressed={prefs.fontScale === size}
+            data-selected={prefs.fontScale === size}
             onClick={() => setPrefs({ ...prefs, fontScale: size })}
           >
             {size}%
@@ -94,7 +98,9 @@ export default function SettingsPage() {
           <button
             key={level}
             type="button"
-            className={`chip uppercase ${prefs.startingLevel === level ? "border-[var(--accent)]" : ""}`}
+            className="chip uppercase"
+            aria-pressed={prefs.startingLevel === level}
+            data-selected={prefs.startingLevel === level}
             onClick={() => setPrefs({ ...prefs, startingLevel: level })}
           >
             {level}

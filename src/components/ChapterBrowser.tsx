@@ -40,7 +40,9 @@ export function ChapterBrowser({
           <button
             key={id}
             type="button"
-            className={`chip capitalize ${tab === id ? "border-[var(--accent)]" : ""}`}
+            className="chip capitalize"
+            aria-pressed={tab === id}
+            data-selected={tab === id}
             onClick={() => setTab(id)}
           >
             {id === "lessons" ? "Lessons" : "Chapter words"}

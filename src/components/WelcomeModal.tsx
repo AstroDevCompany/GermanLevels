@@ -44,7 +44,9 @@ export function WelcomeModal({
             <button
               key={level}
               type="button"
-              className={`chip uppercase ${prefs.startingLevel === level ? "border-[var(--accent)]" : ""}`}
+              className="chip uppercase"
+              aria-pressed={prefs.startingLevel === level}
+              data-selected={prefs.startingLevel === level}
               onClick={() => onChange({ ...prefs, startingLevel: level })}
             >
               {level}
@@ -72,7 +74,9 @@ export function WelcomeModal({
             <button
               key={accent.id}
               type="button"
-              className={`chip ${prefs.accent === accent.id ? "border-[var(--accent)]" : ""}`}
+              className="chip"
+              aria-pressed={prefs.accent === accent.id}
+              data-selected={prefs.accent === accent.id}
               onClick={() => onChange({ ...prefs, accent: accent.id })}
             >
               {accent.label}
