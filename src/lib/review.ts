@@ -1,0 +1,140 @@
+import type { Exercise, Lesson } from "@/content/types";
+import { normalizeAnswer, stripArticle } from "@/lib/german";
+
+export type TaughtLesson = {
+  id: string;
+  number: number;
+  title: string;
+};
+
+const TYPE_FALLBACK: Record<Exercise["type"], number> = {
+  "type-answer": 3,
+  "fill-blank": 5,
+  matching: 2,
+  "drag-order": 7,
+  "listen-choice": 8,
+  "true-false": 11,
+  "multiple-choice": 2,
+};
+
+function addKey(keys: Set<string>, value?: string) {
+  if (!value) return;
+  const normalized = normalizeAnswer(value);
+  if (normalized.length < 2) return;
+  keys.add(normalized);
+  const stripped = normalizeAnswer(stripArticle(value));
+  if (stripped.length >= 2) keys.add(stripped);
+}
+
+function lessonKeys(lesson: Lesson): Set<string> {
+  const keys = new Set<string>();
+  for (const card of lesson.teaching ?? []) {
+    addKey(keys, card.speak);
+    addKey(keys, card.body);
+    addKey(keys, card.translation);
+    for (const row of card.rows ?? []) {
+      addKey(keys, row.de);
+      addKey(keys, row.en);
+    }
+    for (const point of card.points ?? []) addKey(keys, point);
+  }
+  if (lesson.passage) {
+    addKey(keys, lesson.passage.text);
+    addKey(keys, lesson.passage.translation);
+    for (const part of lesson.passage.text.split(/[.!?]/)) addKey(keys, part.trim());
+    for (const part of lesson.passage.translation.split(/[.!?]/)) addKey(keys, part.trim());
+  }
+  addKey(keys, lesson.grammarNote);
+  return keys;
+}
+
+function needlesFor(exercise: Exercise): string[] {
+  const keys = new Set<string>();
+  if ("speak" in exercise) addKey(keys, exercise.speak);
+  if ("translation" in exercise) addKey(keys, exercise.translation);
+  if ("statement" in exercise) addKey(keys, exercise.statement);
+  if ("answer" in exercise) {
+    const answer = exercise.answer;
+    if (typeof answer === "string") addKey(keys, answer);
+    else if (Array.isArray(answer)) {
+      if (typeof answer[0] === "string") {
+        for (const item of answer) addKey(keys, item);
+        if (exercise.type === "drag-order") addKey(keys, answer.join(" "));
+      }
+    } else if (typeof answer === "boolean") {
+      addKey(keys, exercise.statement);
+    }
+  }
+  if (exercise.type === "matching") {
+    for (const pair of exercise.pairs) {
+      addKey(keys, pair.left);
+      addKey(keys, pair.right);
+    }
+  }
+  if (exercise.type === "fill-blank") {
+    const rest = exercise.sentence.replaceAll("___", "").trim();
+    addKey(keys, rest);
+    const hole = Array.isArray(exercise.answer) ? exercise.answer[0] : exercise.answer;
+    addKey(keys, `${hole} ${rest}`.trim());
+  }
+  return [...keys];
+}
+
+function fallbackNumber(exercise: Exercise): number {
+  const prompt = exercise.prompt.toLowerCase();
+  if (prompt.includes("phrase")) {
+    return prompt.includes("rebuild") || prompt.includes("write") ? 10 : 9;
+  }
+  if (prompt.includes("article")) return 5;
+  if (
+    prompt.includes("text") ||
+    prompt.includes("passage") ||
+    prompt.includes("this line") ||
+    prompt.includes("mainly about")
+  ) {
+    return 13;
+  }
+  if (exercise.type === "listen-choice" && "speak" in exercise && exercise.speak.includes(" ")) {
+    return 7;
+  }
+  if (exercise.type === "type-answer") {
+    const sample = Array.isArray(exercise.answer) ? exercise.answer[0] : exercise.answer;
+    if (sample && (/[äöüßÄÖÜ]/.test(sample) || /^(der|die|das)\s/i.test(sample))) {
+      return 3;
+    }
+  }
+  return TYPE_FALLBACK[exercise.type];
+}
+
+function byNumber(lessons: Lesson[], number: number): TaughtLesson | null {
+  const lesson = lessons.find((item) => item.number === number);
+  if (!lesson) return null;
+  return { id: lesson.id, number: lesson.number, title: lesson.title };
+}
+
+export function findTaughtLesson(
+  exercise: Exercise,
+  lessons: Lesson[],
+  currentLessonId: string,
+): TaughtLesson | null {
+  const needles = needlesFor(exercise);
+  const hits: TaughtLesson[] = [];
+  for (const lesson of lessons) {
+    const keys = lessonKeys(lesson);
+    const matched = needles.some((needle) => {
+      if (keys.has(needle)) return true;
+      if (needle.length < 4) return false;
+      for (const key of keys) {
+        if (key.includes(needle) || needle.includes(key)) return true;
+      }
+      return false;
+    });
+    if (matched) {
+      hits.push({ id: lesson.id, number: lesson.number, title: lesson.title });
+    }
+  }
+  hits.sort((a, b) => a.number - b.number);
+  const earlier = hits.find((item) => item.id !== currentLessonId) ?? hits[0];
+  if (earlier) return earlier;
+  return byNumber(lessons, fallbackNumber(exercise));
+}
