@@ -8,6 +8,43 @@ export type Skill =
   | "listening"
   | "mixed";
 
+export type LessonRole = "introduction" | "practice" | "application" | "review";
+
+export type LessonPhase =
+  | "learn"
+  | "understand"
+  | "controlled-practice"
+  | "recall"
+  | "application"
+  | "review";
+
+export type ExerciseModality =
+  | "recognition"
+  | "recall"
+  | "completion"
+  | "construction"
+  | "translation"
+  | "production";
+
+export type ErrorKind =
+  | "forgotten-vocabulary"
+  | "misunderstood-grammar"
+  | "careless-mistake"
+  | "spelling-error"
+  | "word-order-error";
+
+export type ErrorCategory =
+  | "noun-gender"
+  | "verb-conjugation"
+  | "word-order"
+  | "vocabulary"
+  | "spelling"
+  | "articles"
+  | "case"
+  | "other";
+
+export type Confidence = "low" | "medium" | "high";
+
 export type Gender = "m" | "f" | "n" | "pl";
 
 export type VocabItem = {
@@ -65,9 +102,51 @@ export type ChapterSource = {
   writings: WritingPrompt[];
 };
 
-export type MultipleChoiceExercise = {
-  type: "multiple-choice";
+export type TeachRow = {
+  de: string;
+  en: string;
+  note?: string;
+};
+
+export type ConceptLessonRef = {
+  lessonId: string;
+  number: number;
+  title: string;
+};
+
+export type GrammarConcept = {
   id: string;
+  title: string;
+  titleDe: string;
+  level: LevelId;
+  chapterSlug: string;
+  summary: string;
+  prerequisites: string[];
+  commonMistakes: string[];
+  vocabDependencies: string[];
+  forms?: TeachRow[];
+  examples?: Sentence[];
+  applicationPrompt?: string;
+  applicationPromptDe?: string;
+  applicationSample?: string;
+  applicationKeywords?: string[];
+  introductionLesson?: ConceptLessonRef;
+  practiceLessons?: ConceptLessonRef[];
+  reviewLessons?: ConceptLessonRef[];
+};
+
+export type ExerciseMeta = {
+  id: string;
+  conceptId?: string;
+  modality?: ExerciseModality;
+  phase?: LessonPhase;
+  target?: string;
+  errorCategory?: ErrorCategory;
+  targeted?: boolean;
+};
+
+export type MultipleChoiceExercise = ExerciseMeta & {
+  type: "multiple-choice";
   prompt: string;
   promptDe?: string;
   options: string[];
@@ -76,9 +155,8 @@ export type MultipleChoiceExercise = {
   speak?: string;
 };
 
-export type FillBlankExercise = {
+export type FillBlankExercise = ExerciseMeta & {
   type: "fill-blank";
-  id: string;
   prompt: string;
   sentence: string;
   answer: string | string[];
@@ -87,18 +165,16 @@ export type FillBlankExercise = {
   speak?: string;
 };
 
-export type TypeAnswerExercise = {
+export type TypeAnswerExercise = ExerciseMeta & {
   type: "type-answer";
-  id: string;
   prompt: string;
   answer: string | string[];
   hint?: string;
   speak?: string;
 };
 
-export type DragOrderExercise = {
+export type DragOrderExercise = ExerciseMeta & {
   type: "drag-order";
-  id: string;
   prompt: string;
   words: string[];
   answer: string[];
@@ -106,16 +182,14 @@ export type DragOrderExercise = {
   speak?: string;
 };
 
-export type MatchingExercise = {
+export type MatchingExercise = ExerciseMeta & {
   type: "matching";
-  id: string;
   prompt: string;
   pairs: { left: string; right: string }[];
 };
 
-export type TrueFalseExercise = {
+export type TrueFalseExercise = ExerciseMeta & {
   type: "true-false";
-  id: string;
   prompt: string;
   statement: string;
   answer: boolean;
@@ -123,14 +197,23 @@ export type TrueFalseExercise = {
   speak?: string;
 };
 
-export type ListenChoiceExercise = {
+export type ListenChoiceExercise = ExerciseMeta & {
   type: "listen-choice";
-  id: string;
   prompt: string;
   speak: string;
   options: string[];
   answer: string;
   explain?: string;
+};
+
+export type FreeProductionExercise = ExerciseMeta & {
+  type: "free-production";
+  prompt: string;
+  promptDe?: string;
+  sample: string;
+  keywords?: string[];
+  minSentences?: number;
+  hints?: string[];
 };
 
 export type Exercise =
@@ -140,13 +223,8 @@ export type Exercise =
   | DragOrderExercise
   | MatchingExercise
   | TrueFalseExercise
-  | ListenChoiceExercise;
-
-export type TeachRow = {
-  de: string;
-  en: string;
-  note?: string;
-};
+  | ListenChoiceExercise
+  | FreeProductionExercise;
 
 export type TeachCard = {
   id: string;
@@ -159,6 +237,7 @@ export type TeachCard = {
   speak?: string;
   points?: string[];
   rows?: TeachRow[];
+  phase?: LessonPhase;
 };
 
 export type Lesson = {
@@ -167,8 +246,12 @@ export type Lesson = {
   title: string;
   titleDe: string;
   skill: Skill;
+  role: LessonRole;
   summary: string;
   estimatedMinutes: number;
+  conceptIds: string[];
+  newVocab: VocabItem[];
+  recycledVocab: VocabItem[];
   passage?: {
     title: string;
     titleDe: string;
@@ -189,6 +272,7 @@ export type Chapter = {
   skill: Skill;
   grammar: string[];
   vocab: VocabItem[];
+  concepts: GrammarConcept[];
   lessons: Lesson[];
 };
 

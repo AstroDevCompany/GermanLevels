@@ -82,6 +82,37 @@ export function pickDistractors(
   return seededShuffle(unique, seed).slice(0, count);
 }
 
+export function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const prev = new Array<number>(cols);
+  const curr = new Array<number>(cols);
+  for (let j = 0; j < cols; j += 1) prev[j] = j;
+  for (let i = 1; i < rows; i += 1) {
+    curr[0] = i;
+    for (let j = 1; j < cols; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    for (let j = 0; j < cols; j += 1) prev[j] = curr[j] ?? 0;
+  }
+  return prev[b.length] ?? b.length;
+}
+
+export function isAdjacentTransposition(a: string, b: string): boolean {
+  if (a.length !== b.length || a.length < 2) return false;
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i += 1;
+  if (i >= a.length - 1) return false;
+  if (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2)) {
+    return true;
+  }
+  return false;
+}
+
 export function uniqueWords(values: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];

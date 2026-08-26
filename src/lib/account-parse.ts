@@ -8,7 +8,8 @@ export function isEmptyProgress(progress: ProgressState) {
   return (
     progress.xp === 0 &&
     progress.starred.length === 0 &&
-    Object.keys(progress.results).length === 0
+    Object.keys(progress.results).length === 0 &&
+    Object.keys(progress.errors ?? {}).length === 0
   );
 }
 
@@ -55,5 +56,6 @@ export function parseProgress(input: unknown): ProgressState | null {
     xp: Number(value.xp) || 0,
     lastLesson: value.lastLesson,
     days: value.days && typeof value.days === "object" ? value.days : {},
+    errors: value.errors && typeof value.errors === "object" ? value.errors : {},
   };
 }

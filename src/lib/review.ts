@@ -15,6 +15,7 @@ const TYPE_FALLBACK: Record<Exercise["type"], number> = {
   "listen-choice": 8,
   "true-false": 11,
   "multiple-choice": 2,
+  "free-production": 17,
 };
 
 function addKey(keys: Set<string>, value?: string) {
@@ -76,6 +77,10 @@ function needlesFor(exercise: Exercise): string[] {
     addKey(keys, rest);
     const hole = Array.isArray(exercise.answer) ? exercise.answer[0] : exercise.answer;
     addKey(keys, `${hole} ${rest}`.trim());
+  }
+  if (exercise.type === "free-production") {
+    addKey(keys, exercise.sample);
+    addKey(keys, exercise.prompt);
   }
   return [...keys];
 }

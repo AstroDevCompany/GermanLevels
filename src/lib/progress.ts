@@ -1,4 +1,5 @@
 import type { LevelId } from "@/content/types";
+import { applyAnswer, type AnswerPayload, type ErrorRecord } from "@/lib/errors";
 
 export type LessonResult = {
   completed: boolean;
@@ -19,12 +20,13 @@ export type ProgressState = {
     lesson: string;
   };
   days: Record<string, number>;
+  errors: Record<string, ErrorRecord>;
 };
 
 const KEY = "germanlevels.progress.v1";
 
 export function emptyProgress(): ProgressState {
-  return { results: {}, starred: [], xp: 0, days: {} };
+  return { results: {}, starred: [], xp: 0, days: {}, errors: {} };
 }
 
 export function lessonKey(level: string, chapter: string, lesson: string) {
@@ -144,6 +146,15 @@ export function progressTone(percent: number): "orange" | "yellow" | "green" | "
   if (percent > 75) return "green";
   if (percent >= 25) return "yellow";
   return "orange";
+}
+
+export function recordAnswer(state: ProgressState, payload: AnswerPayload): ProgressState {
+  const next: ProgressState = {
+    ...state,
+    errors: applyAnswer(state.errors ?? {}, payload),
+  };
+  saveProgress(next);
+  return next;
 }
 
 export function toggleStar(state: ProgressState, word: string): ProgressState {

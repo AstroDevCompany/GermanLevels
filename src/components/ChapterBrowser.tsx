@@ -34,6 +34,27 @@ export function ChapterBrowser({
       <h1 className="mt-3 text-4xl font-semibold tracking-tight">{chapter.title}</h1>
       <p className="mt-2 text-lg text-[var(--muted)]">{chapter.titleDe}</p>
       <p className="mt-5 max-w-2xl leading-8">{chapter.blurb}</p>
+      {chapter.concepts?.length ? (
+        <ul className="mt-6 grid gap-3">
+          {chapter.concepts.map((concept) => (
+            <li key={concept.id} className="rounded-2xl border border-[var(--line)] px-4 py-3">
+              <p className="font-medium">{concept.title}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">{concept.summary}</p>
+              {concept.introductionLesson ? (
+                <p className="mt-2 text-xs text-[var(--muted)]">
+                  Intro · Lesson {String(concept.introductionLesson.number).padStart(2, "0")}
+                  {concept.practiceLessons?.length
+                    ? ` · Practice ${concept.practiceLessons.map((item) => String(item.number).padStart(2, "0")).join(", ")}`
+                    : ""}
+                  {concept.reviewLessons?.length
+                    ? ` · Review ${concept.reviewLessons.map((item) => String(item.number).padStart(2, "0")).join(", ")}`
+                    : ""}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <div className="mt-10 flex flex-wrap gap-3">
         {(["lessons", "words"] as const).map((id) => (
@@ -65,6 +86,7 @@ export function ChapterBrowser({
                 >
                   <p className="text-xs text-[var(--muted)]">
                     Lesson {String(lesson.number).padStart(2, "0")}
+                    {lesson.role ? ` · ${lesson.role}` : ""}
                   </p>
                   <p className="mt-2 capitalize text-sm text-[var(--muted)]">{lesson.skill}</p>
                   <p className="mt-3 font-medium">{lesson.title}</p>
@@ -78,6 +100,32 @@ export function ChapterBrowser({
         </section>
       ) : (
         <section className="mt-8">
+          {chapter.concepts?.length ? (
+            <div className="mb-8 grid gap-4">
+              {chapter.concepts.map((concept) => (
+                <article key={concept.id} className="rounded-2xl border border-[var(--line)] px-4 py-4">
+                  <h3 className="font-medium">{concept.title}</h3>
+                  {concept.prerequisites.length ? (
+                    <p className="mt-2 text-sm text-[var(--muted)]">
+                      Prerequisites: {concept.prerequisites.join(", ")}
+                    </p>
+                  ) : null}
+                  {concept.vocabDependencies.length ? (
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      Vocabulary: {concept.vocabDependencies.join(", ")}
+                    </p>
+                  ) : null}
+                  {concept.commonMistakes.length ? (
+                    <ul className="mt-3 grid gap-1 text-sm">
+                      {concept.commonMistakes.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          ) : null}
           {chapter.grammar.length ? (
             <div className="mb-8 grid gap-3">
               {chapter.grammar.map((point) => (

@@ -23,6 +23,7 @@ import { isEmptyProgress } from "@/lib/account-parse";
 import {
   emptyProgress,
   loadProgress,
+  recordAnswer as saveAnswer,
   recordLesson,
   recordLessonProgress,
   resetProgress,
@@ -30,6 +31,7 @@ import {
   toggleStar,
   type ProgressState,
 } from "@/lib/progress";
+import type { AnswerPayload } from "@/lib/errors";
 import type { LevelId } from "@/content/types";
 
 export type AuthUser = {
@@ -59,6 +61,7 @@ type AppContextValue = {
     lesson: string;
     percent: number;
   }) => void;
+  recordAnswer: (payload: AnswerPayload) => void;
   starWord: (word: string) => void;
   clearProgress: () => void;
   signup: (email: string, password: string) => Promise<AuthResult>;
@@ -176,6 +179,13 @@ export function Providers({ children }: { children: ReactNode }) {
       saveLessonProgress: (payload) => {
         setProgress((current) => {
           const next = recordLessonProgress(current, payload);
+          queueCloudProgress(next);
+          return next;
+        });
+      },
+      recordAnswer: (payload) => {
+        setProgress((current) => {
+          const next = saveAnswer(current, payload);
           queueCloudProgress(next);
           return next;
         });

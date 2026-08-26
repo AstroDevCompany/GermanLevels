@@ -5,9 +5,35 @@ import Link from "next/link";
 import { GermanChars, insertChar } from "@/components/GermanChars";
 import { useApp } from "@/components/Providers";
 import { getChapter } from "@/content/index";
-import type { Exercise, Lesson, LevelId, TeachCard } from "@/content/types";
-import { answersMatch, articleClass, seededShuffle } from "@/lib/german";
+import type { Exercise, Lesson, LessonPhase, LevelId, TeachCard } from "@/content/types";
+import { answersMatch, articleClass, normalizeAnswer, seededShuffle } from "@/lib/german";
+import { lessonKey } from "@/lib/progress";
 import { findTaughtLesson, type TaughtLesson } from "@/lib/review";
+import { injectTargetedExercises } from "@/lib/targeted";
+
+const PHASE_LABEL: Record<LessonPhase, string> = {
+  learn: "Learn",
+  understand: "Understand",
+  "controlled-practice": "Controlled practice",
+  recall: "Recall",
+  application: "Application",
+  review: "Review",
+};
+
+function productionOk(text: string, exercise: Extract<Exercise, { type: "free-production" }>): boolean {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 6) return false;
+  const marks = text.match(/[.!?]/g)?.length ?? 0;
+  const sentences = Math.max(marks, words.length >= 10 ? 2 : 1);
+  if ((exercise.minSentences ?? 2) > sentences && words.length < 12) return false;
+  if (exercise.keywords?.length) {
+    const hits = exercise.keywords.filter((keyword) =>
+      normalizeAnswer(text).includes(normalizeAnswer(keyword)),
+    );
+    return hits.length >= Math.min(2, exercise.keywords.length);
+  }
+  return true;
+}
 
 type ReviewFeedback = {
   review: TaughtLesson | null;
@@ -22,6 +48,7 @@ type Props = {
   chapterTitle: string;
   lesson: Lesson;
   nextHref?: string;
+  practice?: boolean;
 };
 
 export function LessonPlayer({
@@ -30,10 +57,14 @@ export function LessonPlayer({
   chapterTitle,
   lesson,
   nextHref,
+  practice = false,
 }: Props) {
-  const { prefs, completeLesson, saveLessonProgress, starWord, progress } = useApp();
+  const { prefs, completeLesson, saveLessonProgress, recordAnswer, starWord, progress } = useApp();
   const teaching = lesson.teaching ?? [];
   const chapterLessons = getChapter(levelId, chapterSlug)?.lessons ?? [];
+  const [exercises] = useState(() =>
+    practice ? lesson.exercises : injectTargetedExercises(lesson, progress.errors ?? {}),
+  );
   const [phase, setPhase] = useState<"teach" | "quiz">(teaching.length ? "teach" : "quiz");
   const [teachIndex, setTeachIndex] = useState(0);
   const [index, setIndex] = useState(0);
@@ -42,8 +73,8 @@ export function LessonPlayer({
   const [scored, setScored] = useState<Set<string>>(new Set());
   const [awarded, setAwarded] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
-  const exercise = lesson.exercises[index];
-  const total = lesson.exercises.length;
+  const exercise = exercises[index];
+  const total = exercises.length;
   const teachTotal = teaching.length;
   const steps = Math.max(1, teachTotal + total);
   const step =
@@ -58,6 +89,7 @@ export function LessonPlayer({
     (phase === "teach" && teachIndex > 0);
 
   function persist(percent: number) {
+    if (practice) return;
     saveLessonProgress({
       level: levelId,
       chapter: chapterSlug,
@@ -67,6 +99,7 @@ export function LessonPlayer({
   }
 
   useEffect(() => {
+    if (practice) return;
     saveLessonProgress({
       level: levelId,
       chapter: chapterSlug,
@@ -75,8 +108,14 @@ export function LessonPlayer({
     });
   }, [levelId, chapterSlug, lesson.id]);
 
-  function onResult(correct: boolean) {
+  function onResult(correct: boolean, given: string) {
     const id = exercise.id;
+    recordAnswer({
+      exercise,
+      given,
+      correct,
+      lessonKey: lessonKey(levelId, chapterSlug, lesson.id),
+    });
     if (!scored.has(id)) {
       setScored((current) => new Set(current).add(id));
       if (correct) setScore((value) => value + 1);
@@ -86,13 +125,15 @@ export function LessonPlayer({
       setDone(true);
       if (!awarded) {
         setAwarded(true);
-        completeLesson({
-          level: levelId,
-          chapter: chapterSlug,
-          lesson: lesson.id,
-          score: nextScore,
-          total,
-        });
+        if (!practice) {
+          completeLesson({
+            level: levelId,
+            chapter: chapterSlug,
+            lesson: lesson.id,
+            score: nextScore,
+            total,
+          });
+        }
       }
     } else {
       setIndex((value) => value + 1);
@@ -150,7 +191,8 @@ export function LessonPlayer({
         <p className="text-sm text-[var(--muted)]">{chapterTitle}</p>
         <h1 className="mt-3 text-3xl font-semibold">Lesson complete</h1>
         <p className="mt-4 leading-7 text-[var(--muted)]">
-          You scored {score} / {total} on the practice. XP is saved on this device.
+          You scored {score} / {total}
+          {practice ? " on targeted review." : " on the practice. XP is saved on this device."}
         </p>
         <div className="mt-8 flex flex-wrap gap-4">
           <button type="button" className="chip" onClick={goBack}>
@@ -177,13 +219,17 @@ export function LessonPlayer({
       <div>
         <p className="text-sm text-[var(--muted)]">{chapterTitle}</p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Lesson {lesson.number} of 20
+          {practice
+            ? "Targeted review"
+            : `Lesson ${lesson.number} of ${chapterLessons.length || 20}${lesson.role ? ` · ${lesson.role}` : ""}`}
         </p>
         <p className="mt-2 text-sm capitalize text-[var(--muted)]">{lesson.skill}</p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">{lesson.title}</h1>
         <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">{lesson.summary}</p>
         <p className="mt-5 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-          {phase === "teach" ? "Learn" : "Practice"}
+          {phase === "teach"
+            ? PHASE_LABEL[teaching[teachIndex]?.phase ?? "learn"]
+            : PHASE_LABEL[exercise?.phase ?? "controlled-practice"]}
         </p>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {step} of {steps}
@@ -362,7 +408,7 @@ function ExerciseCard({
   showHints: boolean;
   starred: string[];
   onStar: (word: string) => void;
-  onResult: (correct: boolean) => void;
+  onResult: (correct: boolean, given: string) => void;
   canGoBack: boolean;
   onBack: () => void;
   review: TaughtLesson | null;
@@ -378,7 +424,10 @@ function ExerciseCard({
   };
   return (
     <section className="rounded-3xl border border-[var(--line)] bg-[var(--bg-elev)] p-6 sm:p-8">
-      <h2 className="text-lg font-medium leading-8">{exercise.prompt}</h2>
+      {exercise.targeted ? (
+        <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Targeted review</p>
+      ) : null}
+      <h2 className={`${exercise.targeted ? "mt-3 " : ""}text-lg font-medium leading-8`}>{exercise.prompt}</h2>
       {"promptDe" in exercise && exercise.promptDe ? (
         <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{exercise.promptDe}</p>
       ) : null}
@@ -421,6 +470,9 @@ function ExerciseCard({
           feedback={feedback}
         />
       ) : null}
+      {exercise.type === "free-production" ? (
+        <FreeProductionExercise exercise={exercise} showHints={showHints} onResult={onResult} feedback={feedback} />
+      ) : null}
       <div className="mt-8">
         {canGoBack ? (
           <button type="button" className="chip" onClick={onBack}>
@@ -440,7 +492,7 @@ function ChoiceExercise({
 }: {
   exercise: Extract<Exercise, { type: "multiple-choice" | "listen-choice" }>;
   showPromptText?: boolean;
-  onResult: (correct: boolean) => void;
+  onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
@@ -478,7 +530,7 @@ function ChoiceExercise({
         <ResultBar
           correct={picked === exercise.answer}
           explain={exercise.explain}
-          onNext={() => onResult(picked === exercise.answer)}
+          onNext={() => onResult(picked === exercise.answer, picked ?? "")}
           feedback={feedback}
         />
       ) : null}
@@ -492,7 +544,7 @@ function TrueFalseExercise({
   feedback,
 }: {
   exercise: Extract<Exercise, { type: "true-false" }>;
-  onResult: (correct: boolean) => void;
+  onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const [picked, setPicked] = useState<boolean | null>(null);
@@ -526,7 +578,7 @@ function TrueFalseExercise({
         <ResultBar
           correct={picked === exercise.answer}
           explain={exercise.explain}
-          onNext={() => onResult(picked === exercise.answer)}
+          onNext={() => onResult(picked === exercise.answer, picked ? "true" : "false")}
           feedback={feedback}
         />
       ) : null}
@@ -542,7 +594,7 @@ function FillBlankExercise({
 }: {
   exercise: Extract<Exercise, { type: "fill-blank" }>;
   showHints: boolean;
-  onResult: (correct: boolean) => void;
+  onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const [value, setValue] = useState("");
@@ -611,7 +663,7 @@ function FillBlankExercise({
         <ResultBar
           correct={correct}
           explain={Array.isArray(exercise.answer) ? exercise.answer[0] : exercise.answer}
-          onNext={() => onResult(correct)}
+          onNext={() => onResult(correct, given)}
           feedback={feedback}
         />
       )}
@@ -627,7 +679,7 @@ function TypeExercise({
 }: {
   exercise: Extract<Exercise, { type: "type-answer" }>;
   showHints: boolean;
-  onResult: (correct: boolean) => void;
+  onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const [value, setValue] = useState("");
@@ -663,7 +715,7 @@ function TypeExercise({
         <ResultBar
           correct={correct}
           explain={Array.isArray(exercise.answer) ? exercise.answer.join(" / ") : exercise.answer}
-          onNext={() => onResult(correct)}
+          onNext={() => onResult(correct, value)}
           feedback={feedback}
         />
       )}
@@ -677,7 +729,7 @@ function DragOrderExercise({
   feedback,
 }: {
   exercise: Extract<Exercise, { type: "drag-order" }>;
-  onResult: (correct: boolean) => void;
+  onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const [pool, setPool] = useState(exercise.words);
@@ -774,7 +826,7 @@ function DragOrderExercise({
         <ResultBar
           correct={correct}
           explain={exercise.answer.join(" ").replace(/ ([.,!?;:])/g, "$1")}
-          onNext={() => onResult(correct)}
+          onNext={() => onResult(correct, builtText)}
           feedback={feedback}
         />
       )}
@@ -795,7 +847,7 @@ function MatchingExercise({
   exercise: Extract<Exercise, { type: "matching" }>;
   starred: string[];
   onStar: (word: string) => void;
-  onResult: (correct: boolean) => void;
+  onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const rights = useMemo(
@@ -926,9 +978,77 @@ function MatchingExercise({
       ) : null}
       {checked ? (
         <div className="sm:col-span-2">
-          <ResultBar correct={correct} onNext={() => onResult(correct)} feedback={feedback} />
+          <ResultBar
+            correct={correct}
+            onNext={() =>
+              onResult(
+                correct,
+                exercise.pairs.map((pair) => `${pair.left}=${matches[pair.left] ?? ""}`).join("; "),
+              )
+            }
+            feedback={feedback}
+          />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function FreeProductionExercise({
+  exercise,
+  showHints,
+  onResult,
+  feedback,
+}: {
+  exercise: Extract<Exercise, { type: "free-production" }>;
+  showHints: boolean;
+  onResult: (correct: boolean, given: string) => void;
+  feedback: ReviewFeedback;
+}) {
+  const [value, setValue] = useState("");
+  const [checked, setChecked] = useState(false);
+  const correct = productionOk(value, exercise);
+  return (
+    <div className="mt-5">
+      <textarea
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        rows={5}
+        className="w-full rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3 outline-none focus:border-[var(--accent)]"
+        placeholder="Write 2–3 German sentences"
+      />
+      {showHints && exercise.hints?.length ? (
+        <ul className="mt-3 grid gap-1 text-sm text-[var(--muted)]">
+          {exercise.hints.map((hint) => (
+            <li key={hint}>{hint}</li>
+          ))}
+        </ul>
+      ) : null}
+      {!checked ? (
+        <button
+          type="button"
+          className="mt-5 rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
+          onClick={() => setChecked(true)}
+        >
+          Check
+        </button>
+      ) : (
+        <div>
+          <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+            Model answer: {exercise.sample}
+          </p>
+          <ResultBar
+            correct={correct}
+            explain={
+              correct
+                ? "Your sentences include the key pieces. Compare with the model."
+                : "Use the model to try again next time. Aim for two short German sentences."
+            }
+            onNext={() => onResult(correct, value)}
+            feedback={feedback}
+          />
+        </div>
+      )}
     </div>
   );
 }
