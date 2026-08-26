@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Chapter, LevelId } from "@/content/types";
-import { articleClass } from "@/lib/german";
 import { isLessonStarted, lessonKey, lessonPercent } from "@/lib/progress";
 import { ProgressMark } from "@/components/ProgressMark";
+import { RevealList } from "@/components/RevealList";
 import { useApp } from "@/components/Providers";
 
 type Neighbor = { slug: string; title: string } | null;
@@ -135,17 +135,7 @@ export function ChapterBrowser({
               ))}
             </div>
           ) : null}
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {chapter.vocab.map((item, index) => (
-              <li
-                key={`${item.de}-${index}`}
-                className="rounded-2xl border border-[var(--line)] px-4 py-4"
-              >
-                <p className={`font-medium ${articleClass(item.de)}`}>{item.de}</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">{item.en}</p>
-              </li>
-            ))}
-          </ul>
+          <RevealList rows={chapter.vocab} />
         </section>
       )}
 

@@ -92,7 +92,7 @@ export function WelcomeModal({
               onChange({ ...prefs, showHints: event.target.checked })
             }
           />
-          Show hints in lessons
+          Show hints in lessons (letter-by-letter on typing)
         </label>
         <label className="mt-3 flex items-center gap-3">
           <input

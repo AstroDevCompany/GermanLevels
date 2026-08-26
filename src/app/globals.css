@@ -389,3 +389,61 @@ html[data-reduced-motion="on"] ::view-transition-new(page-main) {
   margin: 0 0.15rem;
   padding: 0 0.2rem;
 }
+
+.match-pair[data-pair="0"] {
+  border-color: #0f766e;
+  background: color-mix(in oklab, #0f766e 18%, var(--bg-elev));
+}
+.match-pair[data-pair="1"] {
+  border-color: #b45309;
+  background: color-mix(in oklab, #f59e0b 22%, var(--bg-elev));
+}
+.match-pair[data-pair="2"] {
+  border-color: #6d28d9;
+  background: color-mix(in oklab, #a78bfa 22%, var(--bg-elev));
+}
+.match-pair[data-pair="3"] {
+  border-color: #be123c;
+  background: color-mix(in oklab, #fb7185 20%, var(--bg-elev));
+}
+.match-pair[data-pair="4"] {
+  border-color: #0369a1;
+  background: color-mix(in oklab, #38bdf8 22%, var(--bg-elev));
+}
+.match-pair[data-pair="5"] {
+  border-color: #3f6212;
+  background: color-mix(in oklab, #84cc16 20%, var(--bg-elev));
+}
+.match-pair[data-pair="6"] {
+  border-color: #c2410c;
+  background: color-mix(in oklab, #fb923c 22%, var(--bg-elev));
+}
+.match-pair[data-pair="7"] {
+  border-color: #4338ca;
+  background: color-mix(in oklab, #818cf8 22%, var(--bg-elev));
+}
+
+html.dark .match-pair[data-pair="0"] {
+  border-color: #2dd4bf;
+}
+html.dark .match-pair[data-pair="1"] {
+  border-color: #fbbf24;
+}
+html.dark .match-pair[data-pair="2"] {
+  border-color: #c4b5fd;
+}
+html.dark .match-pair[data-pair="3"] {
+  border-color: #fb7185;
+}
+html.dark .match-pair[data-pair="4"] {
+  border-color: #7dd3fc;
+}
+html.dark .match-pair[data-pair="5"] {
+  border-color: #a3e635;
+}
+html.dark .match-pair[data-pair="6"] {
+  border-color: #fdba74;
+}
+html.dark .match-pair[data-pair="7"] {
+  border-color: #a5b4fc;
+}

@@ -23,7 +23,7 @@ export default function AboutPage() {
           2. Match, choose, drag, and type — every lesson is interactive.
         </li>
         <li className="rounded-2xl border border-[var(--line)] p-4">
-          3. Write only after you have seen a model on the same page.
+          3. Meanings and models stay hidden until you tap. No covering the page with your hand.
         </li>
         <li className="rounded-2xl border border-[var(--line)] p-4">
           4. Keep der/die/das visible. Customize accent, type size, and hints.

@@ -80,6 +80,18 @@ function makeId(prefix: string, index: number): string {
   return `${prefix}-${index + 1}`;
 }
 
+function uniquePairs(items: { de: string; en: string }[]): { de: string; en: string }[] {
+  const seen = new Set<string>();
+  const out: { de: string; en: string }[] = [];
+  for (const item of items) {
+    const key = item.de.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 function tag<T extends Exercise>(exercise: T, meta: Partial<ExerciseMeta>): T {
   return { ...exercise, ...meta };
 }
@@ -277,8 +289,9 @@ function makeTeaching(args: {
     hideForms,
   } = args;
   const cards: TeachCard[] = [];
-  const examples = (concept?.examples?.length ? concept.examples : sentences).slice(0, 3);
-  const learnWords = fresh.length ? fresh : recycled.slice(0, 5);
+  const examplePool = uniquePairs([...(concept?.examples ?? []), ...sentences]);
+  const examples = examplePool.slice(0, 6);
+  const learnWords = fresh.length ? fresh : recycled.slice(0, 8);
 
   if (spec.role === "introduction" && !hideForms) {
     if (concept?.forms?.length) {
@@ -288,7 +301,7 @@ function makeTeaching(args: {
           "Learn",
           concept.title,
           concept.forms,
-          "Say each form aloud. You will need them without looking in a later step.",
+          "Say each form aloud. Tap a line if you need the English.",
           "learn",
         ),
       );
@@ -310,18 +323,31 @@ function makeTeaching(args: {
           "teach-understand",
           "Understand",
           "See the forms in a sentence",
-          sentenceRows(examples),
-          "Read German first. English is there if you need it.",
+          sentenceRows(examples.slice(0, 6)),
+          "Read the German first. Tap a line if you need the English.",
           "understand",
         ),
       );
+      const more = examplePool.slice(6, 12);
+      if (more.length >= 2) {
+        cards.push(
+          listCard(
+            "teach-understand-more",
+            "Understand",
+            "More examples of the same idea",
+            sentenceRows(more),
+            "Same pattern, new sentences. Tap a line if you need the English.",
+            "understand",
+          ),
+        );
+      }
     }
     if (concept?.commonMistakes.length) {
       cards.push(
         grammarCard("teach-mistakes", "Common mistakes", concept.commonMistakes, undefined, "learn"),
       );
     } else if (source.grammar.length) {
-      cards.push(grammarCard("teach-grammar", "A rule to keep in mind", source.grammar.slice(0, 2), source.blurb));
+      cards.push(grammarCard("teach-grammar", "A rule to keep in mind", source.grammar.slice(0, 3), source.blurb));
     }
   }
 
@@ -331,8 +357,8 @@ function makeTeaching(args: {
         "teach-models",
         "Understand",
         "Read the full sentence before a word goes missing",
-        sentenceRows(examples.slice(0, 4)),
-        "The next step hides one piece. Learn the shape now.",
+        sentenceRows(examples.slice(0, 6)),
+        "Read the German. Tap a line if you need the English. Next, one piece is missing.",
         "understand",
       ),
     );
@@ -342,7 +368,7 @@ function makeTeaching(args: {
           "teach-nouns",
           "Learn",
           "Keep the article with the noun",
-          vocabRows(nouns.slice(0, 5)),
+          vocabRows(nouns.slice(0, 8)),
           undefined,
           "learn",
         ),
@@ -352,25 +378,27 @@ function makeTeaching(args: {
 
   if (spec.focus === "recall" || (spec.role === "practice" && hideForms)) {
     if (concept?.forms?.length) {
-      cards.push({
-        id: "teach-recall-cues",
-        kind: "grammar",
-        eyebrow: "Recall",
-        phase: "recall",
-        title: "The table is hidden",
-        body: "Produce the German from English. Looking back is the easy part; this is the useful part.",
-        points: concept.forms.map((row) => row.en),
-      });
+      cards.push(
+        listCard(
+          "teach-recall-cues",
+          "Recall",
+          "The table is hidden",
+          concept.forms,
+          "Say the German from the English. Tap a line only to check.",
+          "recall",
+        ),
+      );
     } else {
-      cards.push({
-        id: "teach-recall-v",
-        kind: "grammar",
-        eyebrow: "Recall",
-        phase: "recall",
-        title: "From memory",
-        body: "You have already seen these. English is the prompt; German is what you produce.",
-        points: (fresh.length ? fresh : recycled).slice(0, 5).map((item) => item.en),
-      });
+      cards.push(
+        listCard(
+          "teach-recall-v",
+          "Recall",
+          "From memory",
+          vocabRows((fresh.length ? fresh : recycled).slice(0, 8)),
+          "Say the German from the English. Tap a line only to check.",
+          "recall",
+        ),
+      );
     }
   }
 
@@ -383,7 +411,7 @@ function makeTeaching(args: {
       phase: "application",
       title: concept?.applicationPrompt ?? writing?.prompt ?? "Write a few sentences",
       titleDe: concept?.applicationPromptDe ?? writing?.promptDe,
-      body: "Study the model, then write without copying word for word.",
+      body: "Study the model here. The next step hides it so you write from memory.",
       points: writing?.hints ?? concept?.commonMistakes.slice(0, 3),
       speak: concept?.applicationSample ?? writing?.sample,
     });
@@ -393,7 +421,7 @@ function makeTeaching(args: {
     const reviewWords = uniqueWords(
       [...recycled, ...fresh].map((item) => item.de),
     ).length
-      ? [...recycled.slice(0, 4), ...fresh.slice(0, 2)]
+      ? [...recycled.slice(0, 8), ...fresh.slice(0, 4)]
       : learnWords;
     if (reviewWords.length) {
       cards.push(
@@ -401,14 +429,14 @@ function makeTeaching(args: {
           "teach-review-v",
           "Review",
           "Words that should already feel familiar",
-          vocabRows(reviewWords.slice(0, 5)),
-          "Recognition is not enough — the quiz will also ask you to produce German.",
+          vocabRows(reviewWords.slice(0, 8)),
+          "Tap a line if you need the meaning. The quiz will also ask you to produce German.",
           "review",
         ),
       );
     }
     if (source.grammar.length) {
-      cards.push(grammarCard("teach-review-g", "Rules to reuse", source.grammar.slice(0, 3), undefined, "review"));
+      cards.push(grammarCard("teach-review-g", "Rules to reuse", source.grammar.slice(0, 5), undefined, "review"));
     }
   }
 
@@ -433,8 +461,8 @@ function makeTeaching(args: {
         "teach-listen",
         "Understand",
         "Phrases you will hear",
-        phraseRows(phrases.slice(0, 4)),
-        "Read them now. Next you hear them without the German on screen, then you produce them.",
+        phraseRows(phrases.slice(0, 8)),
+        "Read them now. Tap a line if you need the English. Next you hear them, then you produce them.",
         "understand",
       ),
     );
@@ -448,7 +476,7 @@ function makeTeaching(args: {
         readingCard(
           "teach-read",
           readings[0],
-          "A short text after the new words. Listen once, then reveal English only if you need it.",
+          "A short text after the new words. Listen once, then show English only if you need it.",
         ),
       );
     }
@@ -467,7 +495,7 @@ function makeTeaching(args: {
           "teach-core",
           "Learn",
           "Learn these words first",
-          vocabRows(learnWords.slice(0, 5)),
+          vocabRows(learnWords.slice(0, 8)),
           undefined,
           "learn",
         ),
@@ -517,7 +545,7 @@ function makeExercises(args: {
   } = args;
   const exercises: Exercise[] = [];
   const used = [...fresh, ...recycled];
-  const pool = used.length ? used : vocab.slice(0, 6);
+  const pool = used.length ? used : vocab.slice(0, 12);
   const vocabDe = vocab.map(displayWord);
   const vocabEn = vocab.map((item) => item.en);
   const phraseEn = phrases.map((item) => item.en);
@@ -527,8 +555,19 @@ function makeExercises(args: {
     conceptId: concept?.id,
   };
   const isA1 = levelId === "a1";
-  const models = (concept?.examples?.length ? concept.examples : sentences).slice(0, 6);
+  const maxItems = isA1 ? 16 : 20;
+  const models = uniquePairs([...(concept?.examples ?? []), ...sentences]).slice(0, 12);
   const forms = concept?.forms ?? [];
+
+  function covers(value: string): boolean {
+    const needle = value.trim().toLowerCase();
+    if (!needle) return false;
+    return exercises.some((exercise) => {
+      if (exercise.target?.toLowerCase() === needle) return true;
+      if ("speak" in exercise && exercise.speak?.toLowerCase() === needle) return true;
+      return false;
+    });
+  }
 
   function addRecognition(items: VocabItem[], count: number) {
     items.slice(0, count).forEach((item, i) => {
@@ -750,10 +789,10 @@ function makeExercises(args: {
   let grammarNote: string | undefined = source.grammar[0];
 
   if (spec.focus === "learn" || spec.role === "introduction") {
-    if (forms.length) addCompletion(models, 3);
+    if (forms.length) addCompletion(models, 6);
     else {
-      addCompletion(models, 2);
-      addRecognition(pool, isA1 ? 1 : 2);
+      addCompletion(models, 4);
+      addRecognition(pool, isA1 ? 2 : 4);
     }
     if (number === 1 && readings[0] && source.skill === "reading") {
       passage = {
@@ -764,27 +803,27 @@ function makeExercises(args: {
       };
     }
   } else if (spec.focus === "controlled-practice") {
-    addCompletion(models, 3);
-    addArticles(isA1 ? 2 : 3);
-    addConstruction(models, 2);
+    addCompletion(models, 6);
+    addArticles(isA1 ? 4 : 6);
+    addConstruction(models, 4);
   } else if (spec.focus === "recall" && spec.skill !== "listening" && spec.skill !== "reading") {
-    if (forms.length) addFormRecall(3);
-    addRecall(pool, 3);
-    addTranslation(models, 1);
+    if (forms.length) addFormRecall(Math.min(6, forms.length));
+    addRecall(pool, 6);
+    addTranslation(models, 2);
   } else if (spec.role === "application") {
-    addTranslation(models, 3);
-    addConstruction(models.slice(0, 2), 1);
+    addTranslation(models, 6);
+    addConstruction(models.slice(0, 4), 2);
     addProduction();
   } else if (spec.focus === "review" && spec.skill !== "listening" && spec.skill !== "reading" && number !== 20) {
-    addMatching(pool, 4);
-    addRecall(pool, 2);
-    addCompletion(models, 1);
-    addConstruction(seededShuffle(sentences, `${seed}-rs`).slice(0, 1), 1);
-    addTranslation(models, 1);
+    addMatching(pool, 6);
+    addRecall(pool, 4);
+    addCompletion(models, 2);
+    addConstruction(seededShuffle(sentences, `${seed}-rs`).slice(0, 2), 2);
+    addTranslation(models, 2);
   }
 
   if (spec.skill === "listening") {
-    const listenItems = (number === 18 ? phrases : pool).slice(0, 3);
+    const listenItems = (number === 18 ? phrases : pool).slice(0, 6);
     listenItems.forEach((item, i) => {
       const de = "de" in item ? item.de : "";
       const en = "en" in item ? item.en : "";
@@ -830,7 +869,7 @@ function makeExercises(args: {
         text: selected.text,
         translation: selected.translation,
       };
-      selected.questions.slice(0, number === 15 ? 3 : 2).forEach((q, i) => {
+      selected.questions.slice(0, number === 15 ? 6 : 4).forEach((q, i) => {
         exercises.push(
           tag(
             {
@@ -880,8 +919,8 @@ function makeExercises(args: {
   }
 
   if (number === 20) {
-    addRecall(seededShuffle(vocab, `${seed}-q`).slice(0, 3), 3);
-    addConstruction(seededShuffle(sentences, `${seed}-qs`).slice(0, 1), 1);
+    addRecall(seededShuffle(vocab, `${seed}-q`).slice(0, 6), 6);
+    addConstruction(seededShuffle(sentences, `${seed}-qs`).slice(0, 2), 2);
     const quizReading = readings[readings.length - 1] ?? readings[0];
     if (quizReading) {
       passage = {
@@ -890,7 +929,7 @@ function makeExercises(args: {
         text: quizReading.text,
         translation: quizReading.translation,
       };
-      quizReading.questions.slice(0, 1).forEach((q, i) => {
+      quizReading.questions.slice(0, 2).forEach((q, i) => {
         exercises.push(
           tag(
             {
@@ -906,12 +945,12 @@ function makeExercises(args: {
         );
       });
     }
-    addTranslation(seededShuffle(sentences, `${seed}-qt`).slice(0, 2), 2);
+    addTranslation(seededShuffle(sentences, `${seed}-qt`).slice(0, 4), 4);
     addProduction();
   }
 
   if (spec.skill === "vocab" && spec.role === "practice" && spec.focus === "recall" && phrases.length) {
-    phrases.slice(0, 3).forEach((item, i) => {
+    phrases.slice(0, 6).forEach((item, i) => {
       exercises.push(
         tag(
           {
@@ -928,18 +967,37 @@ function makeExercises(args: {
     });
   }
 
-  const filled = exercises.filter((exercise) => {
-    if (exercise.type === "matching") return exercise.pairs.length >= 3;
-    if (exercise.type === "drag-order") return exercise.answer.length > 1;
-    if (exercise.type === "fill-blank") return Boolean(exercise.answer);
-    if (exercise.type === "free-production") return Boolean(exercise.sample || exercise.prompt);
-    return true;
-  });
+  function keepValid(items: Exercise[]): Exercise[] {
+    return items.filter((exercise) => {
+      if (exercise.type === "matching") return exercise.pairs.length >= 3;
+      if (exercise.type === "drag-order") return exercise.answer.length > 1;
+      if (exercise.type === "fill-blank") return Boolean(exercise.answer);
+      if (exercise.type === "free-production") return Boolean(exercise.sample || exercise.prompt);
+      return true;
+    });
+  }
 
-  const maxMc = number === 13 || number === 14 || number === 15 || number === 20 ? 4 : isA1 ? 2 : 3;
-  const limited = capRecognition(filled, maxMc);
-  const maxItems = isA1 ? 8 : 10;
-  return { exercises: limited.slice(0, maxItems), passage, grammarNote };
+  function padQuiz() {
+    const remaining = () => Math.max(0, maxItems - exercises.length);
+    if (!remaining()) return;
+    const unusedVocab = [...pool, ...vocab].filter(
+      (item, index, list) => list.findIndex((entry) => entry.de === item.de) === index && !covers(item.de),
+    );
+    const unusedSentences = uniquePairs(sentences).filter((item) => !covers(item.de));
+    if (remaining()) addRecall(unusedVocab, remaining());
+    if (remaining()) addCompletion(unusedSentences, remaining());
+    if (remaining()) addConstruction(unusedSentences, remaining());
+    if (remaining()) addTranslation(unusedSentences, remaining());
+    if (remaining()) addArticles(remaining());
+  }
+
+  padQuiz();
+  const maxMc = number === 13 || number === 14 || number === 15 || number === 20 ? 8 : isA1 ? 4 : 6;
+  const limited = capRecognition(keepValid(exercises), maxMc);
+  exercises.length = 0;
+  exercises.push(...limited);
+  padQuiz();
+  return { exercises: keepValid(exercises).slice(0, maxItems), passage, grammarNote };
 }
 
 function attachLessonRefs(concepts: GrammarConcept[], lessons: Lesson[]): GrammarConcept[] {
@@ -969,7 +1027,7 @@ function roleSummary(spec: LessonSpec, source: ChapterSource, concept?: GrammarC
     return `${topic}: complete the missing pieces while the model is still fresh.`;
   }
   if (spec.focus === "recall") {
-    return `${topic}: the table is hidden. Produce the German from meaning.`;
+    return `${topic}: the table stays hidden. Produce the German from meaning.`;
   }
   if (spec.role === "application") {
     return `${topic}: write a few sentences of your own.`;
@@ -986,7 +1044,7 @@ function buildLessons(
   const budget = VOCAB_BUDGET[levelId];
   const introAt = assignVocabLessons(vocab, budget);
   const nouns = nounPool(vocab);
-  const recycleCount = levelId === "a1" ? 4 : 5;
+  const recycleCount = levelId === "a1" ? 8 : 10;
 
   return LESSON_PLAN.map((spec, index) => {
     const number = index + 1;
@@ -1036,7 +1094,8 @@ function buildLessons(
       skill: spec.skill,
       role: spec.role,
       summary: roleSummary(spec, source, concept),
-      estimatedMinutes: 8 + (filled.length > 6 ? 3 : 0) + (teaching.length > 1 ? 3 : 2),
+      estimatedMinutes:
+        (8 + (filled.length > 6 ? 3 : 0) + (teaching.length > 1 ? 3 : 2)) * 2,
       conceptIds: conceptIdsFor(concepts, number, spec.role),
       newVocab: fresh,
       recycledVocab: recycled,
@@ -1049,7 +1108,7 @@ function buildLessons(
 }
 
 function poolFallback(vocab: VocabItem[], _seed: string, concept?: GrammarConcept): Exercise[] {
-  return vocab.slice(0, 4).map((item, i) =>
+  return vocab.slice(0, 8).map((item, i) =>
     tag(
       {
         type: "type-answer",

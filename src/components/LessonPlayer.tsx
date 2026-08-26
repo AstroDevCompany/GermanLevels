@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { GermanChars, insertChar } from "@/components/GermanChars";
+import { RevealList } from "@/components/RevealList";
 import { useApp } from "@/components/Providers";
 import { getChapter } from "@/content/index";
 import type { Exercise, Lesson, LessonPhase, LevelId, TeachCard } from "@/content/types";
@@ -19,6 +20,19 @@ const PHASE_LABEL: Record<LessonPhase, string> = {
   application: "Application",
   review: "Review",
 };
+
+function hintAnswer(answer: string | string[]): string {
+  return Array.isArray(answer) ? String(answer[0] ?? "") : answer;
+}
+
+function nextHintValue(current: string, answer: string): string {
+  if (!answer) return current;
+  let matched = 0;
+  const limit = Math.min(current.length, answer.length);
+  while (matched < limit && current[matched] === answer[matched]) matched += 1;
+  if (matched >= answer.length) return answer;
+  return answer.slice(0, matched + 1);
+}
 
 function productionOk(text: string, exercise: Extract<Exercise, { type: "free-production" }>): boolean {
   const words = text.trim().split(/\s+/).filter(Boolean);
@@ -72,7 +86,6 @@ export function LessonPlayer({
   const [score, setScore] = useState(0);
   const [scored, setScored] = useState<Set<string>>(new Set());
   const [awarded, setAwarded] = useState(false);
-  const [showTranslation, setShowTranslation] = useState(false);
   const exercise = exercises[index];
   const total = exercises.length;
   const teachTotal = teaching.length;
@@ -144,11 +157,9 @@ export function LessonPlayer({
   function onTeachContinue() {
     const nextTeach = teachIndex + 1;
     if (nextTeach >= teachTotal) {
-      setShowTranslation(false);
       setPhase("quiz");
       persist(Math.round((teachTotal / steps) * 100));
     } else {
-      setShowTranslation(false);
       setTeachIndex(nextTeach);
       persist(Math.round((nextTeach / steps) * 100));
     }
@@ -173,7 +184,6 @@ export function LessonPlayer({
 
   function reviewCurrent() {
     setDone(false);
-    setShowTranslation(false);
     setIndex(0);
     if (teachTotal > 0) {
       setPhase("teach");
@@ -246,8 +256,6 @@ export function LessonPlayer({
         {phase === "teach" ? (
           <TeachPanel
             card={teaching[teachIndex]}
-            showTranslation={showTranslation}
-            onToggleTranslation={() => setShowTranslation((value) => !value)}
             starred={progress.starred}
             onStar={starWord}
             isLast={teachIndex + 1 >= teachTotal}
@@ -289,8 +297,6 @@ export function LessonPlayer({
 
 function TeachPanel({
   card,
-  showTranslation,
-  onToggleTranslation,
   starred,
   onStar,
   isLast,
@@ -299,8 +305,6 @@ function TeachPanel({
   onContinue,
 }: {
   card: TeachCard;
-  showTranslation: boolean;
-  onToggleTranslation: () => void;
   starred: string[];
   onStar: (word: string) => void;
   isLast: boolean;
@@ -308,6 +312,8 @@ function TeachPanel({
   onBack: () => void;
   onContinue: () => void;
 }) {
+  const [showTranslation, setShowTranslation] = useState(false);
+  const promptSide = card.phase === "recall" ? "en" : "de";
   return (
     <section className="rounded-3xl border border-[var(--line)] bg-[var(--bg-elev)] p-6 sm:p-8">
       <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{card.eyebrow}</p>
@@ -330,30 +336,12 @@ function TeachPanel({
       ) : null}
 
       {card.rows?.length ? (
-        <ul className="mt-6 grid gap-4">
-          {card.rows.map((row, rowIndex) => (
-            <li
-              key={`${row.de}-${rowIndex}`}
-              className="rounded-2xl border border-[var(--line)] px-4 py-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className={`font-medium ${articleClass(row.de)}`}>{row.de}</p>
-                  <p className="mt-2 text-sm text-[var(--muted)]">{row.en}</p>
-                  {row.note ? <p className="mt-2 text-xs leading-6 text-[var(--muted)]">{row.note}</p> : null}
-                </div>
-                <button
-                  type="button"
-                  className="chip"
-                  onClick={() => onStar(row.de)}
-                  aria-label="Star word"
-                >
-                  {starred.includes(row.de) ? "★" : "☆"}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <RevealList
+          rows={card.rows}
+          prompt={promptSide}
+          starred={starred}
+          onStar={onStar}
+        />
       ) : null}
 
       {card.translation ? (
@@ -361,7 +349,7 @@ function TeachPanel({
           <button
             type="button"
             className="text-sm text-[var(--accent)]"
-            onClick={onToggleTranslation}
+            onClick={() => setShowTranslation((value) => !value)}
           >
             {showTranslation ? "Hide English" : "Show English"}
           </button>
@@ -369,7 +357,9 @@ function TeachPanel({
             <p className="mt-3 max-w-2xl whitespace-pre-wrap leading-7 text-[var(--muted)]">
               {card.translation}
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-2 text-sm text-[var(--muted)]">English stays hidden until you ask.</p>
+          )}
         </div>
       ) : null}
 
@@ -471,7 +461,7 @@ function ExerciseCard({
         />
       ) : null}
       {exercise.type === "free-production" ? (
-        <FreeProductionExercise exercise={exercise} showHints={showHints} onResult={onResult} feedback={feedback} />
+        <FreeProductionExercise exercise={exercise} onResult={onResult} feedback={feedback} />
       ) : null}
       <div className="mt-8">
         {canGoBack ? (
@@ -600,6 +590,7 @@ function FillBlankExercise({
   const [value, setValue] = useState("");
   const [placed, setPlaced] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [showMeaning, setShowMeaning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const given = placed ?? value;
   const correct = answersMatch(given, exercise.answer);
@@ -641,8 +632,17 @@ function FillBlankExercise({
           ))}
         </div>
       ) : null}
-      {showHints && exercise.hint ? (
-        <p className="mt-3 text-sm text-[var(--muted)]">{exercise.hint}</p>
+      {exercise.hint ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            className="text-sm text-[var(--accent)]"
+            onClick={() => setShowMeaning((value) => !value)}
+          >
+            {showMeaning ? "Hide meaning" : "Show meaning"}
+          </button>
+          {showMeaning ? <p className="mt-2 text-sm text-[var(--muted)]">{exercise.hint}</p> : null}
+        </div>
       ) : null}
       <GermanChars
         disabled={checked}
@@ -652,13 +652,31 @@ function FillBlankExercise({
         }}
       />
       {!checked ? (
-        <button
-          type="button"
-          className="mt-5 rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
-          onClick={() => setChecked(true)}
-        >
-          Check
-        </button>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
+            onClick={() => setChecked(true)}
+          >
+            Check
+          </button>
+          {showHints ? (
+            <button
+              type="button"
+              className="chip"
+              disabled={given === hintAnswer(exercise.answer)}
+              onClick={() => {
+                const next = nextHintValue(given, hintAnswer(exercise.answer));
+                setPlaced(null);
+                setValue(next);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              aria-label="Reveal the next letter"
+            >
+              Hint
+            </button>
+          ) : null}
+        </div>
       ) : (
         <ResultBar
           correct={correct}
@@ -684,6 +702,7 @@ function TypeExercise({
 }) {
   const [value, setValue] = useState("");
   const [checked, setChecked] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const correct = answersMatch(value, exercise.answer);
   return (
@@ -700,17 +719,43 @@ function TypeExercise({
         disabled={checked}
         onInsert={(char) => setValue((current) => insertChar(current, char, inputRef.current))}
       />
-      {showHints && exercise.hint ? (
-        <p className="mt-3 text-sm text-[var(--muted)]">{exercise.hint}</p>
+      {exercise.hint ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            className="text-sm text-[var(--accent)]"
+            onClick={() => setShowHint((value) => !value)}
+          >
+            {showHint ? "Hide hint" : "Show hint"}
+          </button>
+          {showHint ? <p className="mt-2 text-sm text-[var(--muted)]">{exercise.hint}</p> : null}
+        </div>
       ) : null}
       {!checked ? (
-        <button
-          type="button"
-          className="mt-5 rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
-          onClick={() => setChecked(true)}
-        >
-          Check
-        </button>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
+            onClick={() => setChecked(true)}
+          >
+            Check
+          </button>
+          {showHints ? (
+            <button
+              type="button"
+              className="chip"
+              disabled={value === hintAnswer(exercise.answer)}
+              onClick={() => {
+                const next = nextHintValue(value, hintAnswer(exercise.answer));
+                setValue(next);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              aria-label="Reveal the next letter"
+            >
+              Hint
+            </button>
+          ) : null}
+        </div>
       ) : (
         <ResultBar
           correct={correct}
@@ -862,18 +907,78 @@ function MatchingExercise({
   const [pendingRight, setPendingRight] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
-  const usedRights = new Set(Object.values(matches));
+  const ownerOf = (right: string) =>
+    Object.entries(matches).find(([, value]) => value === right)?.[0];
   const complete = Object.keys(matches).length === exercise.pairs.length;
   const correct =
     complete &&
     exercise.pairs.every((pair) => matches[pair.left] === pair.right);
-  const canConfirm = Boolean(pendingLeft && pendingRight);
 
-  function confirmPair() {
-    if (!pendingLeft || !pendingRight) return;
-    setMatches((current) => ({ ...current, [pendingLeft]: pendingRight }));
+  function pairTone(left: string) {
+    const index = exercise.pairs.findIndex((pair) => pair.left === left);
+    return String(((index >= 0 ? index : 0) % 8));
+  }
+
+  function commit(left: string, right: string) {
+    setMatches((current) => {
+      const next = { ...current };
+      for (const [key, value] of Object.entries(next)) {
+        if (value === right) delete next[key];
+      }
+      next[left] = right;
+      return next;
+    });
     setPendingLeft(null);
     setPendingRight(null);
+  }
+
+  function pickLeft(left: string) {
+    if (matches[left]) {
+      setMatches((current) => {
+        const next = { ...current };
+        delete next[left];
+        return next;
+      });
+      setPendingLeft(left);
+      setPendingRight(null);
+      return;
+    }
+    if (pendingRight) {
+      commit(left, pendingRight);
+      return;
+    }
+    setPendingLeft(left === pendingLeft ? null : left);
+  }
+
+  function pickRight(right: string) {
+    const owner = ownerOf(right);
+    if (owner && !pendingLeft) {
+      setMatches((current) => {
+        const next = { ...current };
+        delete next[owner];
+        return next;
+      });
+      return;
+    }
+    if (pendingLeft) {
+      commit(pendingLeft, right);
+      return;
+    }
+    setPendingRight(right === pendingRight ? null : right);
+  }
+
+  function pairClass(left: string | undefined, active: boolean, confirmed: boolean) {
+    if (checked && confirmed && left) {
+      const good = exercise.pairs.some((pair) => pair.left === left && matches[left] === pair.right);
+      return good
+        ? "feedback-ok border-[var(--ok)]"
+        : "feedback-bad border-[var(--danger)]";
+    }
+    if (confirmed && left) return `match-pair`;
+    if (active) {
+      return "border-[var(--accent)] bg-[color-mix(in_oklab,var(--accent)_16%,transparent)] ring-2 ring-[var(--accent)]";
+    }
+    return "border-[var(--line)]";
   }
 
   return (
@@ -886,27 +991,9 @@ function MatchingExercise({
             <div key={pair.left} className="flex gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  if (confirmed) {
-                    const right = matches[pair.left];
-                    setMatches((current) => {
-                      const next = { ...current };
-                      delete next[pair.left];
-                      return next;
-                    });
-                    setPendingLeft(pair.left);
-                    setPendingRight(right ?? null);
-                    return;
-                  }
-                  setPendingLeft(pair.left);
-                }}
-                className={`min-h-14 flex-1 rounded-2xl border px-4 py-3 text-left transition ${
-                  active
-                    ? "border-[var(--accent)] bg-[color-mix(in_oklab,var(--accent)_16%,transparent)] ring-2 ring-[var(--accent)]"
-                    : confirmed
-                      ? "feedback-ok border-[var(--ok)]"
-                      : "border-[var(--line)]"
-                }`}
+                onClick={() => pickLeft(pair.left)}
+                data-pair={confirmed ? pairTone(pair.left) : undefined}
+                className={`min-h-14 flex-1 rounded-2xl border px-4 py-3 text-left transition ${pairClass(pair.left, active, confirmed)}`}
               >
                 <span className={articleClass(pair.left)}>{pair.left}</span>
                 {confirmed ? (
@@ -929,21 +1016,16 @@ function MatchingExercise({
       </div>
       <div className="grid gap-3">
         {rights.map((right, rightIndex) => {
+          const owner = ownerOf(right);
           const active = pendingRight === right;
-          const used = usedRights.has(right);
+          const confirmed = Boolean(owner);
           return (
             <button
               key={`${right}-${rightIndex}`}
               type="button"
-              disabled={used && !active}
-              onClick={() => setPendingRight(right)}
-              className={`min-h-14 rounded-2xl border px-4 py-3 text-left transition ${
-                active
-                  ? "border-[var(--accent)] bg-[color-mix(in_oklab,var(--accent)_16%,transparent)] ring-2 ring-[var(--accent)]"
-                  : used
-                    ? "border-[var(--line)] opacity-40"
-                    : "border-[var(--line)]"
-              }`}
+              onClick={() => pickRight(right)}
+              data-pair={owner ? pairTone(owner) : undefined}
+              className={`min-h-14 rounded-2xl border px-4 py-3 text-left transition ${pairClass(owner, active, confirmed)}`}
             >
               {right}
             </button>
@@ -951,29 +1033,18 @@ function MatchingExercise({
         })}
       </div>
       <p className="text-sm leading-7 text-[var(--muted)] sm:col-span-2">
-        Highlight a German word and an English meaning, then confirm the pair. The
-        meaning appears only after you confirm.
+        Tap a German word, then its meaning. The pair is saved and shares a color.
+        Tap a pair to undo.
       </p>
-      {(canConfirm || complete) && !checked ? (
+      {complete && !checked ? (
         <div className="flex flex-wrap gap-3 sm:col-span-2">
-          {canConfirm ? (
-            <button
-              type="button"
-              className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--accent-ink)]"
-              onClick={confirmPair}
-            >
-              Confirm pair
-            </button>
-          ) : null}
-          {complete ? (
-            <button
-              type="button"
-              className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--accent-ink)]"
-              onClick={() => setChecked(true)}
-            >
-              Check
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--accent-ink)]"
+            onClick={() => setChecked(true)}
+          >
+            Check
+          </button>
         </div>
       ) : null}
       {checked ? (
@@ -996,17 +1067,16 @@ function MatchingExercise({
 
 function FreeProductionExercise({
   exercise,
-  showHints,
   onResult,
   feedback,
 }: {
   exercise: Extract<Exercise, { type: "free-production" }>;
-  showHints: boolean;
   onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const [value, setValue] = useState("");
   const [checked, setChecked] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const correct = productionOk(value, exercise);
   return (
     <div className="mt-5">
@@ -1017,12 +1087,23 @@ function FreeProductionExercise({
         className="w-full rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3 outline-none focus:border-[var(--accent)]"
         placeholder="Write 2–3 German sentences"
       />
-      {showHints && exercise.hints?.length ? (
-        <ul className="mt-3 grid gap-1 text-sm text-[var(--muted)]">
-          {exercise.hints.map((hint) => (
-            <li key={hint}>{hint}</li>
-          ))}
-        </ul>
+      {exercise.hints?.length ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            className="text-sm text-[var(--accent)]"
+            onClick={() => setShowHelp((value) => !value)}
+          >
+            {showHelp ? "Hide hints" : "Show hints"}
+          </button>
+          {showHelp ? (
+            <ul className="mt-2 grid gap-1 text-sm text-[var(--muted)]">
+              {exercise.hints.map((hint) => (
+                <li key={hint}>{hint}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
       {!checked ? (
         <button

@@ -46,6 +46,14 @@ function lessonKeys(lesson: Lesson): Set<string> {
     for (const part of lesson.passage.translation.split(/[.!?]/)) addKey(keys, part.trim());
   }
   addKey(keys, lesson.grammarNote);
+  for (const item of lesson.newVocab ?? []) {
+    addKey(keys, item.de);
+    addKey(keys, item.en);
+  }
+  for (const item of lesson.recycledVocab ?? []) {
+    addKey(keys, item.de);
+    addKey(keys, item.en);
+  }
   return keys;
 }
 
@@ -82,6 +90,7 @@ function needlesFor(exercise: Exercise): string[] {
     addKey(keys, exercise.sample);
     addKey(keys, exercise.prompt);
   }
+  if (exercise.target) addKey(keys, exercise.target);
   return [...keys];
 }
 
@@ -122,6 +131,8 @@ export function findTaughtLesson(
   lessons: Lesson[],
   currentLessonId: string,
 ): TaughtLesson | null {
+  const current = lessons.find((item) => item.id === currentLessonId);
+  const currentNumber = current?.number ?? Number.POSITIVE_INFINITY;
   const needles = needlesFor(exercise);
   const hits: TaughtLesson[] = [];
   for (const lesson of lessons) {
@@ -138,8 +149,14 @@ export function findTaughtLesson(
       hits.push({ id: lesson.id, number: lesson.number, title: lesson.title });
     }
   }
-  hits.sort((a, b) => a.number - b.number);
-  const earlier = hits.find((item) => item.id !== currentLessonId) ?? hits[0];
-  if (earlier) return earlier;
-  return byNumber(lessons, fallbackNumber(exercise));
+  const prior = hits
+    .filter((item) => item.number < currentNumber)
+    .sort((a, b) => a.number - b.number);
+  if (prior[0]) return prior[0];
+  if (current && hits.some((item) => item.id === current.id)) {
+    return { id: current.id, number: current.number, title: current.title };
+  }
+  const fallback = fallbackNumber(exercise);
+  if (fallback < currentNumber) return byNumber(lessons, fallback);
+  return null;
 }
