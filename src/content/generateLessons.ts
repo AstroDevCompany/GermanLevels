@@ -68,6 +68,24 @@ const LESSON_PLAN: LessonSpec[] = [
   { title: "Chapter check", titleDe: "Kapiteltest", skill: "mixed", role: "review", focus: "review" },
 ];
 
+const VOCAB_EXPANSION_PLAN: LessonSpec[] = [
+  { title: "More new words", titleDe: "Noch neue Wörter", skill: "vocab", role: "introduction", focus: "learn" },
+  { title: "Practise the set", titleDe: "Die Menge üben", skill: "vocab", role: "practice", focus: "controlled-practice" },
+  { title: "Recall the set", titleDe: "Die Menge erinnern", skill: "vocab", role: "practice", focus: "recall" },
+  { title: "Listen to the set", titleDe: "Die Menge hören", skill: "listening", role: "practice", focus: "recall" },
+  { title: "Use the set", titleDe: "Die Menge anwenden", skill: "writing", role: "application", focus: "application" },
+  { title: "Another set", titleDe: "Noch eine Menge", skill: "vocab", role: "introduction", focus: "learn" },
+  { title: "Build with the set", titleDe: "Sätze bauen", skill: "writing", role: "practice", focus: "controlled-practice" },
+  { title: "Read the set", titleDe: "Die Menge lesen", skill: "reading", role: "practice", focus: "understand" },
+  { title: "Write with the set", titleDe: "Mit der Menge schreiben", skill: "writing", role: "application", focus: "application" },
+  { title: "Word check", titleDe: "Wortcheck", skill: "mixed", role: "review", focus: "review" },
+];
+
+function lessonPlanFor(levelId: LevelId): LessonSpec[] {
+  if (levelId === "a1" || levelId === "a2") return [...LESSON_PLAN, ...VOCAB_EXPANSION_PLAN];
+  return LESSON_PLAN;
+}
+
 function displayWord(item: VocabItem): string {
   return item.de;
 }
@@ -186,14 +204,14 @@ function grammarCard(
   };
 }
 
-function assignVocabLessons(vocab: VocabItem[], budget: number): number[] {
-  const caps = LESSON_PLAN.map((spec) =>
+function assignVocabLessons(vocab: VocabItem[], budget: number, plan: LessonSpec[]): number[] {
+  const caps = plan.map((spec) =>
     spec.role === "introduction" ? budget : spec.role === "review" ? 0 : Math.min(2, budget),
   );
-  const counts = LESSON_PLAN.map(() => 0);
+  const counts = plan.map(() => 0);
   return vocab.map(() => {
     const slot = counts.findIndex((count, index) => count < (caps[index] ?? 0));
-    const lessonNumber = slot >= 0 ? slot + 1 : LESSON_PLAN.length;
+    const lessonNumber = slot >= 0 ? slot + 1 : plan.length;
     if (slot >= 0) counts[slot] += 1;
     return lessonNumber;
   });
@@ -403,7 +421,7 @@ function makeTeaching(args: {
   }
 
   if (spec.role === "application") {
-    const writing = writings[number === 17 ? 1 : 0] ?? writings[0];
+    const writing = writings[number >= 16 ? 1 : 0] ?? writings[0];
     cards.push({
       id: "teach-apply",
       kind: "model",
@@ -440,14 +458,15 @@ function makeTeaching(args: {
     }
   }
 
-  if (number === 13 || number === 14 || number === 15) {
-    const selected = readings[(Math.max(0, number - 13) || 0) % readings.length] ?? readings[0];
-    if (selected && (spec.skill === "reading" || number >= 13)) {
+  if (spec.skill === "reading" && !(spec.role === "introduction" && number === 1)) {
+    const idx = spec.focus === "understand" ? 0 : spec.focus === "recall" ? 1 : 2;
+    const selected = readings[idx % Math.max(readings.length, 1)] ?? readings[0];
+    if (selected) {
       cards.unshift(
         readingCard(
           "teach-passage",
           selected,
-          number === 15
+          spec.focus === "review"
             ? "Read twice, listen once, then try the questions."
             : "Read for meaning first. Translation is for study, not a substitute for the German.",
         ),
@@ -814,7 +833,7 @@ function makeExercises(args: {
     addTranslation(models, 6);
     addConstruction(models.slice(0, 4), 2);
     addProduction();
-  } else if (spec.focus === "review" && spec.skill !== "listening" && spec.skill !== "reading" && number !== 20) {
+  } else if (spec.focus === "review" && spec.skill !== "listening" && spec.skill !== "reading" && spec.title !== "Chapter check") {
     addMatching(pool, 6);
     addRecall(pool, 4);
     addCompletion(models, 2);
@@ -823,7 +842,8 @@ function makeExercises(args: {
   }
 
   if (spec.skill === "listening") {
-    const listenItems = (number === 18 ? phrases : pool).slice(0, 6);
+    const usePhrases = spec.role === "review" && phrases.length > 0;
+    const listenItems = (usePhrases ? phrases : pool).slice(0, 6);
     listenItems.forEach((item, i) => {
       const de = "de" in item ? item.de : "";
       const en = "en" in item ? item.en : "";
@@ -836,7 +856,7 @@ function makeExercises(args: {
             prompt: "Choose the meaning.",
             speak: de,
             options: seededShuffle(
-              uniqueWords([en, ...pickDistractors(number === 18 ? phraseEn : vocabEn, en, 3, `${seed}-l-${i}`)]),
+              uniqueWords([en, ...pickDistractors(usePhrases ? phraseEn : vocabEn, en, 3, `${seed}-l-${i}`)]),
               `${seed}-lo-${i}`,
             ),
             answer: en,
@@ -860,8 +880,9 @@ function makeExercises(args: {
     });
   }
 
-  if (number === 13 || number === 14 || number === 15) {
-    const selected = readings[(Math.max(0, number - 13) || 0) % readings.length] ?? readings[0];
+  if (spec.skill === "reading" && !(spec.role === "introduction" && number === 1)) {
+    const idx = spec.focus === "understand" ? 0 : spec.focus === "recall" ? 1 : 2;
+    const selected = readings[idx % Math.max(readings.length, 1)] ?? readings[0];
     if (selected) {
       passage = {
         title: selected.title,
@@ -869,7 +890,7 @@ function makeExercises(args: {
         text: selected.text,
         translation: selected.translation,
       };
-      selected.questions.slice(0, number === 15 ? 6 : 4).forEach((q, i) => {
+      selected.questions.slice(0, spec.focus === "review" ? 6 : 4).forEach((q, i) => {
         exercises.push(
           tag(
             {
@@ -898,8 +919,6 @@ function makeExercises(args: {
             { ...metaBase, modality: "recall", phase: "recall", target: snippet, errorCategory: "vocabulary" },
           ),
         );
-      }
-      if (snippet && number !== 13) {
         const words = splitGerman(`${snippet}.`);
         exercises.push(
           tag(
@@ -918,7 +937,7 @@ function makeExercises(args: {
     }
   }
 
-  if (number === 20) {
+  if (spec.title === "Chapter check") {
     addRecall(seededShuffle(vocab, `${seed}-q`).slice(0, 6), 6);
     addConstruction(seededShuffle(sentences, `${seed}-qs`).slice(0, 2), 2);
     const quizReading = readings[readings.length - 1] ?? readings[0];
@@ -992,7 +1011,7 @@ function makeExercises(args: {
   }
 
   padQuiz();
-  const maxMc = number === 13 || number === 14 || number === 15 || number === 20 ? 8 : isA1 ? 4 : 6;
+  const maxMc = spec.skill === "reading" || spec.title === "Chapter check" ? 8 : isA1 ? 4 : 6;
   const limited = capRecognition(keepValid(exercises), maxMc);
   exercises.length = 0;
   exercises.push(...limited);
@@ -1042,11 +1061,12 @@ function buildLessons(
 ): Lesson[] {
   const vocab = source.vocab;
   const budget = VOCAB_BUDGET[levelId];
-  const introAt = assignVocabLessons(vocab, budget);
+  const plan = lessonPlanFor(levelId);
+  const introAt = assignVocabLessons(vocab, budget, plan);
   const nouns = nounPool(vocab);
   const recycleCount = levelId === "a1" ? 8 : 10;
 
-  return LESSON_PLAN.map((spec, index) => {
+  return plan.map((spec, index) => {
     const number = index + 1;
     const id = String(number).padStart(2, "0");
     const seed = `${levelId}-${source.slug}-${id}`;

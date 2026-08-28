@@ -69,3 +69,35 @@ export function q(
 ): Reading["questions"][number] {
   return { question, options, answer, explain };
 }
+
+export type ChapterExtra = {
+  vocab?: VocabItem[];
+  phrases?: Phrase[];
+  sentences?: Sentence[];
+  readings?: Reading[];
+  writings?: WritingPrompt[];
+};
+
+function lemmaKey(value: string) {
+  return value.replace(/^(der|die|das)\s+/i, "").trim().toLowerCase();
+}
+
+export function mergeChapterExtras(base: ChapterSource, extra?: ChapterExtra): ChapterSource {
+  if (!extra) return base;
+  const seen = new Set(base.vocab.map((item) => lemmaKey(item.de)));
+  const vocab = [...base.vocab];
+  for (const item of extra.vocab ?? []) {
+    const key = lemmaKey(item.de);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    vocab.push(item);
+  }
+  return {
+    ...base,
+    vocab,
+    phrases: extra.phrases?.length ? [...base.phrases, ...extra.phrases] : base.phrases,
+    sentences: extra.sentences?.length ? [...base.sentences, ...extra.sentences] : base.sentences,
+    readings: extra.readings?.length ? [...base.readings, ...extra.readings] : base.readings,
+    writings: extra.writings?.length ? [...base.writings, ...extra.writings] : base.writings,
+  };
+}

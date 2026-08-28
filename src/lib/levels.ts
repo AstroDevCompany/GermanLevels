@@ -19,8 +19,8 @@ export const LEVEL_META: Record<
     nameDe: "A1 · Einstieg",
     stage: "Beginner",
     summary:
-      "Start with sounds, reading tiny texts, then write your first German sentences.",
-    focus: ["Alphabet & reading", "Core vocabulary", "First writing"],
+      "Start with sounds and a wide beginner word stock, then write your first German sentences.",
+    focus: ["Alphabet & reading", "Broad vocabulary", "First writing"],
   },
   a2: {
     id: "a2",
@@ -28,7 +28,7 @@ export const LEVEL_META: Record<
     nameDe: "A2 · Grundlage",
     stage: "Elementary",
     summary:
-      "Handle everyday life: shopping, travel, health, and short messages in the past.",
+      "Handle everyday life and add the rest of a 2000-word beginner stock: shopping, travel, health, and short messages in the past.",
     focus: ["Daily situations", "Perfekt", "Notes & emails"],
   },
   b1: {
