@@ -137,6 +137,25 @@ export default function SettingsPage() {
         Reduce motion
       </label>
 
+      <label className="mt-8 block text-sm font-medium">
+        Speech speed ({prefs.speechRate.toFixed(2)}×)
+      </label>
+      <input
+        type="range"
+        min={0.7}
+        max={1.2}
+        step={0.02}
+        value={prefs.speechRate}
+        onChange={(event) =>
+          setPrefs({ ...prefs, speechRate: Number(event.target.value) })
+        }
+        className="mt-2 w-full max-w-xs"
+        aria-label="Speech speed"
+      />
+      <p className="mt-1 text-sm text-[var(--muted)]">
+        Slower audio is easier when you are starting out. Changing speed creates a new recording.
+      </p>
+
       <label className="mt-8 block text-sm font-medium">Daily lesson goal</label>
       <input
         type="number"

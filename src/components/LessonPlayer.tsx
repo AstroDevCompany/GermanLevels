@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { GermanChars, insertChar } from "@/components/GermanChars";
 import { RevealList } from "@/components/RevealList";
+import { SpeakButton } from "@/components/SpeakButton";
 import { useApp } from "@/components/Providers";
 import { getChapter } from "@/content/index";
 import type { Exercise, Lesson, LessonPhase, LevelId, TeachCard } from "@/content/types";
@@ -322,7 +323,14 @@ function TeachPanel({
       {card.body ? <p className="mt-5 max-w-2xl leading-8 text-[var(--muted)]">{card.body}</p> : null}
 
       {card.speak && (card.kind === "reading" || card.kind === "model") ? (
-        <p className="reading-serif mt-6 whitespace-pre-wrap text-lg leading-8">{card.speak}</p>
+        <div className="mt-6">
+          <SpeakButton text={card.speak} />
+          <p className="reading-serif mt-4 whitespace-pre-wrap text-lg leading-8">{card.speak}</p>
+        </div>
+      ) : card.speak ? (
+        <div className="mt-6">
+          <SpeakButton text={card.speak} />
+        </div>
       ) : null}
 
       {card.points?.length ? (
@@ -424,7 +432,6 @@ function ExerciseCard({
       {exercise.type === "multiple-choice" || exercise.type === "listen-choice" ? (
         <ChoiceExercise
           exercise={exercise}
-          showPromptText={exercise.type === "listen-choice"}
           onResult={onResult}
           feedback={feedback}
         />
@@ -476,21 +483,25 @@ function ExerciseCard({
 
 function ChoiceExercise({
   exercise,
-  showPromptText,
   onResult,
   feedback,
 }: {
   exercise: Extract<Exercise, { type: "multiple-choice" | "listen-choice" }>;
-  showPromptText?: boolean;
   onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const locked = picked !== null;
+  const listenOnly = exercise.type === "listen-choice";
   return (
     <div className="mt-6 grid gap-3">
-      {showPromptText && "speak" in exercise && exercise.speak ? (
-        <p className="reading-serif mb-2 text-xl leading-8">{exercise.speak}</p>
+      {exercise.speak ? (
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          <SpeakButton text={exercise.speak} />
+          {listenOnly ? (
+            <p className="text-sm text-[var(--muted)]">Listen, then choose the meaning.</p>
+          ) : null}
+        </div>
       ) : null}
       {exercise.options.map((option) => {
         const selected = picked === option;

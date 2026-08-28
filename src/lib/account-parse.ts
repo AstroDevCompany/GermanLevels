@@ -4,6 +4,12 @@ import {
   type Preferences,
 } from "@/lib/preferences";
 
+function clampSpeechRate(value: unknown): number {
+  const speed = Number(value);
+  if (!Number.isFinite(speed)) return DEFAULT_PREFERENCES.speechRate;
+  return Math.min(1.2, Math.max(0.7, Math.round(speed * 100) / 100));
+}
+
 export function isEmptyProgress(progress: ProgressState) {
   return (
     progress.xp === 0 &&
@@ -38,7 +44,7 @@ export function parsePreferences(input: unknown): Preferences | null {
     showHints: Boolean(value.showHints),
     articleColors: Boolean(value.articleColors),
     reduceMotion: Boolean(value.reduceMotion),
-    speechRate: DEFAULT_PREFERENCES.speechRate,
+    speechRate: clampSpeechRate(value.speechRate),
     dailyGoal: Math.min(40, Math.max(5, Number(value.dailyGoal) || 20)),
     startingLevel,
   };

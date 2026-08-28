@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SpeakButton } from "@/components/SpeakButton";
 import { articleClass } from "@/lib/german";
 
 export type RevealRow = {
@@ -99,16 +100,19 @@ export function RevealList({
                     <p className="mt-2 text-sm text-[var(--muted)]">Tap to show {oneLabel}</p>
                   )}
                 </button>
-                {onStar ? (
-                  <button
-                    type="button"
-                    className="chip"
-                    onClick={() => onStar(row.de)}
-                    aria-label="Star word"
-                  >
-                    {starred?.includes(row.de) ? "★" : "☆"}
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+                  <SpeakButton text={row.de} />
+                  {onStar ? (
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={() => onStar(row.de)}
+                      aria-label="Star word"
+                    >
+                      {starred?.includes(row.de) ? "★" : "☆"}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </li>
           );

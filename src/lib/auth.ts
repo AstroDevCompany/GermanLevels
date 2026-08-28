@@ -37,6 +37,7 @@ type PrefRow = {
   show_hints: boolean;
   article_colors: boolean;
   reduce_motion: boolean;
+  speech_rate: number;
   daily_goal: number;
   starting_level: string;
 };
@@ -81,7 +82,10 @@ export function prefsFromRow(row?: PrefRow | null): Preferences {
     showHints: row.show_hints,
     articleColors: row.article_colors,
     reduceMotion: row.reduce_motion,
-    speechRate: DEFAULT_PREFERENCES.speechRate,
+    speechRate: (() => {
+      const speed = Number(row.speech_rate);
+      return Number.isFinite(speed) && speed > 0 ? speed : DEFAULT_PREFERENCES.speechRate;
+    })(),
     dailyGoal: row.daily_goal || 20,
     startingLevel:
       (row.starting_level as Preferences["startingLevel"]) || "a1",
@@ -155,11 +159,11 @@ export async function upsertPreferences(userId: string, prefs: Preferences) {
   const db = sql();
   await db`INSERT INTO user_preferences (
       user_id, display_name, accent, font_scale, show_hints, article_colors,
-      reduce_motion, daily_goal, starting_level, updated_at
+      reduce_motion, speech_rate, daily_goal, starting_level, updated_at
     ) VALUES (
       ${userId}, ${prefs.displayName}, ${prefs.accent}, ${prefs.fontScale},
       ${prefs.showHints}, ${prefs.articleColors}, ${prefs.reduceMotion},
-      ${prefs.dailyGoal}, ${prefs.startingLevel}, now()
+      ${prefs.speechRate}, ${prefs.dailyGoal}, ${prefs.startingLevel}, now()
     )
     ON CONFLICT (user_id) DO UPDATE SET
       display_name = EXCLUDED.display_name,
@@ -168,6 +172,7 @@ export async function upsertPreferences(userId: string, prefs: Preferences) {
       show_hints = EXCLUDED.show_hints,
       article_colors = EXCLUDED.article_colors,
       reduce_motion = EXCLUDED.reduce_motion,
+      speech_rate = EXCLUDED.speech_rate,
       daily_goal = EXCLUDED.daily_goal,
       starting_level = EXCLUDED.starting_level,
       updated_at = now()`;
