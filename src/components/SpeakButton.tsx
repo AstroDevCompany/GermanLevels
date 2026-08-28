@@ -10,10 +10,14 @@ export function SpeakButton({
   text,
   className = "",
   label = "Listen",
+  onPlay,
+  disabled = false,
 }: {
   text: string;
   className?: string;
   label?: string;
+  onPlay?: () => void;
+  disabled?: boolean;
 }) {
   const { prefs } = useApp();
   const [state, setState] = useState<SpeakState>("idle");
@@ -29,7 +33,7 @@ export function SpeakButton({
   if (!text.trim()) return null;
 
   async function play() {
-    if (state === "loading") return;
+    if (disabled || state === "loading" || state === "playing") return;
     audioRef.current?.pause();
     setState("loading");
     try {
@@ -43,6 +47,7 @@ export function SpeakButton({
       audio.onerror = () => setState("error");
       await audio.play();
       setState("playing");
+      onPlay?.();
     } catch (error) {
       const code = (error as ClientSpeechError).code;
       console.warn("[tts] playback unavailable", code ?? "provider_error");
@@ -62,7 +67,7 @@ export function SpeakButton({
         event.stopPropagation();
         void play();
       }}
-      disabled={state === "loading"}
+      disabled={disabled || state === "loading" || state === "playing"}
       aria-busy={state === "loading"}
       aria-label={state === "error" ? "Speech unavailable" : `Play German audio: ${text}`}
     >

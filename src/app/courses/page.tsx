@@ -10,10 +10,9 @@ export default function CoursesPage() {
     <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
       <h1 className="text-4xl font-semibold tracking-tight">Courses</h1>
       <p className="mt-3 max-w-2xl text-[var(--muted)]">
-        Five separate paths. A1 and A2 add extra word lessons and chapters so
-        beginners meet about two thousand everyday words. Higher levels keep
-        twenty lessons per chapter. Start with reading, then writing, then mixed
-        skills.
+        Five paths, A1 to C1. A and B also train the conversations of daily life.
+        Every level has a timed mock in four papers. Higher levels keep twenty
+        lessons per chapter; beginners add extra speaking and listening scenes.
       </p>
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {levels.map((level) => (

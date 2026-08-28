@@ -6,6 +6,7 @@ export type Skill =
   | "vocab"
   | "grammar"
   | "listening"
+  | "speaking"
   | "mixed";
 
 export type LessonRole = "introduction" | "practice" | "application" | "review";
@@ -88,6 +89,16 @@ export type WritingPrompt = {
   hints: string[];
 };
 
+export type WritingRegister = "informal" | "formal" | "academic";
+
+export type WritingRubric = {
+  minWords: number;
+  targetWords?: number;
+  keywords?: string[];
+  register?: WritingRegister;
+  connectors?: string[];
+};
+
 export type ChapterSource = {
   slug: string;
   title: string;
@@ -143,6 +154,7 @@ export type ExerciseMeta = {
   target?: string;
   errorCategory?: ErrorCategory;
   targeted?: boolean;
+  promptDe?: string;
 };
 
 export type MultipleChoiceExercise = ExerciseMeta & {
@@ -214,6 +226,47 @@ export type FreeProductionExercise = ExerciseMeta & {
   keywords?: string[];
   minSentences?: number;
   hints?: string[];
+  rubric?: WritingRubric;
+};
+
+export type SpeakResponseExercise = ExerciseMeta & {
+  type: "speak-response";
+  prompt: string;
+  promptDe?: string;
+  sample: string;
+  keywords?: string[];
+  speak?: string;
+  situation?: string;
+  situationDe?: string;
+  minSeconds?: number;
+};
+
+export type ListenComprehensionExercise = ExerciseMeta & {
+  type: "listen-comprehension";
+  prompt: string;
+  promptDe?: string;
+  speak: string;
+  maxPlays: number;
+  question: string;
+  options: string[];
+  answer: string;
+  explain?: string;
+};
+
+export type DialogueTurn = {
+  speaker: "npc" | "you";
+  de: string;
+  en?: string;
+  keywords?: string[];
+};
+
+export type DialogueExercise = ExerciseMeta & {
+  type: "dialogue";
+  prompt: string;
+  promptDe?: string;
+  setting: string;
+  settingDe: string;
+  turns: DialogueTurn[];
 };
 
 export type Exercise =
@@ -224,11 +277,14 @@ export type Exercise =
   | MatchingExercise
   | TrueFalseExercise
   | ListenChoiceExercise
-  | FreeProductionExercise;
+  | ListenComprehensionExercise
+  | FreeProductionExercise
+  | SpeakResponseExercise
+  | DialogueExercise;
 
 export type TeachCard = {
   id: string;
-  kind: "reading" | "list" | "grammar" | "model";
+  kind: "reading" | "list" | "grammar" | "model" | "situation";
   eyebrow: string;
   title: string;
   titleDe?: string;

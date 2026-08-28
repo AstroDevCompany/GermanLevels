@@ -8,13 +8,12 @@ import { ProfileHud } from "@/components/ProfileHud";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/courses", label: "Courses" },
+  { href: "/conversations", label: "Talk" },
+  { href: "/exam", label: "Exam" },
   { href: "/practice", label: "Practice" },
   { href: "/progress", label: "Progress" },
-  { href: "/profile", label: "Profile" },
   { href: "/grammar", label: "Grammar" },
-  { href: "/vocabulary", label: "Vocabulary" },
-  { href: "/settings", label: "Settings" },
-  { href: "/account", label: "Account" },
+  { href: "/vocabulary", label: "Words" },
 ];
 
 export function Header() {

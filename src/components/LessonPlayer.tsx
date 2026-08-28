@@ -9,6 +9,12 @@ import { useApp } from "@/components/Providers";
 import { getChapter } from "@/content/index";
 import type { Exercise, Lesson, LessonPhase, LevelId, TeachCard } from "@/content/types";
 import { answersMatch, articleClass, normalizeAnswer, seededShuffle } from "@/lib/german";
+import { rubricLabel, scoreWriting } from "@/lib/writing-rubric";
+import {
+  DialogueExerciseView,
+  ListenComprehensionExercise,
+  SpeakResponseExerciseView,
+} from "@/components/live-skills";
 import { lessonKey } from "@/lib/progress";
 import { findTaughtLesson, type TaughtLesson } from "@/lib/review";
 import { injectTargetedExercises } from "@/lib/targeted";
@@ -36,6 +42,7 @@ function nextHintValue(current: string, answer: string): string {
 }
 
 function productionOk(text: string, exercise: Extract<Exercise, { type: "free-production" }>): boolean {
+  if (exercise.rubric) return scoreWriting(text, exercise.rubric).passed;
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (words.length < 6) return false;
   const marks = text.match(/[.!?]/g)?.length ?? 0;
@@ -96,7 +103,9 @@ export function LessonPlayer({
   const keepPassage =
     phase === "quiz" &&
     Boolean(lesson.passage) &&
-    (lesson.skill === "reading" || lesson.number === 1 || lesson.number === 20);
+    exercise?.type !== "listen-comprehension" &&
+    exercise?.type !== "listen-choice" &&
+    (lesson.skill === "reading" || lesson.skill === "mixed");
   const canGoBack =
     done ||
     (phase === "quiz" && (index > 0 || teachTotal > 0)) ||
@@ -197,13 +206,33 @@ export function LessonPlayer({
   }
 
   if (done) {
+    const ratio = total ? score / total : 0;
+    const headline =
+      chapterSlug === "conversations"
+        ? "Scene survived."
+        : chapterSlug === "exam"
+          ? "Paper in."
+          : lesson.skill === "speaking"
+            ? "You took the floor."
+            : lesson.skill === "listening"
+              ? "Caught in two plays."
+              : lesson.skill === "writing"
+                ? "Text on the page."
+                : "Lesson complete";
+    const blurb =
+      chapterSlug === "conversations"
+        ? `You stayed in German for ${score} of ${total} beats. That is how a café, a phone, or a neighbour actually goes.`
+        : chapterSlug === "exam"
+          ? `Section score ${score} / ${total}. In the room you would only feel the clock.`
+          : `You scored ${score} / ${total}${practice ? " on targeted review." : " on the practice."}${
+              ratio >= 0.8 ? " Solid enough to reuse tomorrow." : " Replay the misses before they fossilise."
+            }`;
     return (
       <section className="lesson-step rounded-3xl border border-[var(--line)] bg-[var(--bg-elev)] p-6 sm:p-10">
         <p className="text-sm text-[var(--muted)]">{chapterTitle}</p>
-        <h1 className="mt-3 text-3xl font-semibold">Lesson complete</h1>
+        <h1 className="mt-3 text-3xl font-semibold">{headline}</h1>
         <p className="mt-4 leading-7 text-[var(--muted)]">
-          You scored {score} / {total}
-          {practice ? " on targeted review." : " on the practice."}
+          {blurb}
           {progress.lastXp ? (
             <>
               {" "}
@@ -223,11 +252,28 @@ export function LessonPlayer({
               href={nextHref}
               className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-[var(--accent-ink)]"
             >
-              Next lesson
+              {chapterSlug === "conversations"
+                ? "Another scene"
+                : chapterSlug === "exam"
+                  ? "Next paper"
+                  : "Next lesson"}
             </Link>
           ) : null}
-          <Link href={`/courses/${levelId}/${chapterSlug}`} className="chip">
-            Back to chapter
+          <Link
+            href={
+              chapterSlug === "conversations"
+                ? "/conversations"
+                : chapterSlug === "exam"
+                  ? `/exam/${levelId}`
+                  : `/courses/${levelId}/${chapterSlug}`
+            }
+            className="chip"
+          >
+            {chapterSlug === "conversations"
+              ? "All conversations"
+              : chapterSlug === "exam"
+                ? "All papers"
+                : "Back to chapter"}
           </Link>
         </div>
       </section>
@@ -241,7 +287,11 @@ export function LessonPlayer({
         <p className="mt-2 text-sm text-[var(--muted)]">
           {practice
             ? "Targeted review"
-            : `Lesson ${lesson.number} of ${chapterLessons.length || 20}${lesson.role ? ` · ${lesson.role}` : ""}`}
+            : chapterSlug === "exam"
+              ? `Paper ${lesson.number} of 4`
+              : chapterSlug === "conversations"
+                ? "Conversation scene"
+                : `Lesson ${lesson.number} of ${chapterLessons.length || 20}${lesson.role ? ` · ${lesson.role}` : ""}`}
         </p>
         <p className="mt-2 text-sm capitalize text-[var(--muted)]">{lesson.skill}</p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">{lesson.title}</h1>
@@ -331,7 +381,7 @@ function TeachPanel({
       {card.titleDe ? <p className="mt-2 text-[var(--muted)]">{card.titleDe}</p> : null}
       {card.body ? <p className="mt-5 max-w-2xl leading-8 text-[var(--muted)]">{card.body}</p> : null}
 
-      {card.speak && (card.kind === "reading" || card.kind === "model") ? (
+      {card.speak && (card.kind === "reading" || card.kind === "model" || card.kind === "situation") ? (
         <div className="mt-6">
           <SpeakButton text={card.speak} />
           <p className="reading-serif mt-4 whitespace-pre-wrap text-lg leading-8">{card.speak}</p>
@@ -434,9 +484,11 @@ function ExerciseCard({
       {exercise.targeted ? (
         <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Targeted review</p>
       ) : null}
-      <h2 className={`${exercise.targeted ? "mt-3 " : ""}text-lg font-medium leading-8`}>{exercise.prompt}</h2>
-      {"promptDe" in exercise && exercise.promptDe ? (
-        <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{exercise.promptDe}</p>
+      <h2 className={`${exercise.targeted ? "mt-3 " : ""}text-lg font-medium leading-8`}>
+        {"promptDe" in exercise && exercise.promptDe ? exercise.promptDe : exercise.prompt}
+      </h2>
+      {"promptDe" in exercise && exercise.promptDe && exercise.promptDe !== exercise.prompt ? (
+        <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{exercise.prompt}</p>
       ) : null}
       {exercise.type === "multiple-choice" || exercise.type === "listen-choice" ? (
         <ChoiceExercise
@@ -478,6 +530,15 @@ function ExerciseCard({
       ) : null}
       {exercise.type === "free-production" ? (
         <FreeProductionExercise exercise={exercise} onResult={onResult} feedback={feedback} />
+      ) : null}
+      {exercise.type === "listen-comprehension" ? (
+        <ListenComprehensionExercise exercise={exercise} onResult={onResult} feedback={feedback} />
+      ) : null}
+      {exercise.type === "speak-response" ? (
+        <SpeakResponseExerciseView exercise={exercise} onResult={onResult} feedback={feedback} />
+      ) : null}
+      {exercise.type === "dialogue" ? (
+        <DialogueExerciseView exercise={exercise} onResult={onResult} feedback={feedback} />
       ) : null}
       <div className="mt-8">
         {canGoBack ? (
@@ -1097,16 +1158,30 @@ function FreeProductionExercise({
   const [value, setValue] = useState("");
   const [checked, setChecked] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const rubric = exercise.rubric ? scoreWriting(value, exercise.rubric) : null;
   const correct = productionOk(value, exercise);
+  const words = value.trim().split(/\s+/).filter(Boolean).length;
+  const under = Boolean(exercise.rubric && words < exercise.rubric.minWords);
   return (
     <div className="mt-5">
+      {exercise.rubric ? (
+        <p className="mb-3 text-sm text-[var(--muted)]">
+          Ziel: etwa {exercise.rubric.targetWords ?? exercise.rubric.minWords} Wörter
+          {exercise.rubric.register ? ` · ${exercise.rubric.register}` : ""}. Scored like a
+          certificate paper: Inhalt, Aufbau, Wortschatz, Korrektheit.
+        </p>
+      ) : null}
       <textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        rows={5}
+        rows={exercise.rubric && (exercise.rubric.minWords ?? 0) >= 70 ? 10 : 5}
         className="w-full rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3 outline-none focus:border-[var(--accent)]"
-        placeholder="Write 2–3 German sentences"
+        placeholder="Write in German — full sentences, not keywords."
       />
+      <p className={`mt-2 text-xs ${under ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>
+        {words} Wörter
+        {exercise.rubric ? ` · Ziel ${exercise.rubric.minWords}–${exercise.rubric.targetWords ?? exercise.rubric.minWords}` : ""}
+      </p>
       {exercise.hints?.length ? (
         <div className="mt-3">
           <button
@@ -1135,15 +1210,34 @@ function FreeProductionExercise({
         </button>
       ) : (
         <div>
+          {rubric ? (
+            <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+              {(["content", "cohesion", "vocabulary", "accuracy"] as const).map((key) => (
+                <li key={key} className="rounded-2xl border border-[var(--line)] px-4 py-3">
+                  <span className="text-[var(--muted)]">{rubricLabel(key)}</span>
+                  <span className="mt-1 block font-medium">{rubric[key]}%</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {rubric?.notes.length ? (
+            <ul className="mt-3 grid gap-1 text-sm text-[var(--muted)]">
+              {rubric.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          ) : null}
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-            Model answer: {exercise.sample}
+            Model: {exercise.sample}
           </p>
           <ResultBar
             correct={correct}
             explain={
-              correct
-                ? "Your sentences include the key pieces. Compare with the model."
-                : "Use the model to try again next time. Aim for two short German sentences."
+              rubric
+                ? `Overall ${rubric.overall}% · ${rubric.wordCount} words. Raters split content, cohesion, vocabulary, and accuracy — not keyword luck.`
+                : correct
+                  ? "Your sentences include the key pieces. Compare with the model."
+                  : "Use the model to try again next time. Aim for two short German sentences."
             }
             onNext={() => onResult(correct, value)}
             feedback={feedback}
@@ -1174,7 +1268,7 @@ function ResultBar({
       }`}
     >
       <div>
-        <p className="font-medium">{correct ? "Nice." : "Not quite."}</p>
+        <p className="font-medium">{correct ? "On track." : "Not quite."}</p>
         {explain ? (
           <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{explain}</p>
         ) : null}

@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     template: "%s · GermanLevels",
   },
   description:
-    "Learn German from A1 to C1 with interactive courses: reading first, then writing, then the full climb.",
+    "Learn German from A1 to C1: everyday conversations plus Goethe- and telc-shaped practice papers.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

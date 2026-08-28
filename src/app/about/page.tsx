@@ -11,27 +11,32 @@ export default function AboutPage() {
       <h1 className="text-4xl font-semibold tracking-tight">The method</h1>
       <p className="mt-4 leading-8 text-[var(--muted)]">
         GermanLevels is a full A1–C1 path with {counts.chapters} chapters and{" "}
-        {counts.lessons} lessons. You begin with sounds and short reading, then
-        write lists and mini-sentences, then move into grammar, narration, and
-        public language.
+        {counts.lessons} lessons, plus conversation scenes and timed mock papers.
+        A1 and A2 aim at everyday talk. B1 to C1 aim at the four skills a Goethe or
+        telc examiner actually marks.
       </p>
       <ol className="mt-8 grid gap-3">
         <li className="rounded-2xl border border-[var(--line)] p-4">
-          1. Read a tiny authentic-style text before you produce anything.
+          1. Hear a scene, then speak or type your line — not only pick an English gloss.
         </li>
         <li className="rounded-2xl border border-[var(--line)] p-4">
-          2. Match, choose, drag, and type — every lesson is interactive.
+          2. Read exam-length texts. Questions stay in German.
         </li>
         <li className="rounded-2xl border border-[var(--line)] p-4">
-          3. Meanings and models stay hidden until you tap. No covering the page with your hand.
+          3. Writing is scored on Inhalt, Aufbau, Wortschatz, and Korrektheit.
         </li>
         <li className="rounded-2xl border border-[var(--line)] p-4">
-          4. Keep der/die/das visible. Customize accent, type size, and hints.
+          4. Sit a short mock: Lesen, Hören (twice only), Schreiben, Sprechen.
         </li>
       </ol>
-      <Link href="/courses/a1" className="mt-8 inline-block text-[var(--accent)]">
-        Begin with A1, chapter 1
-      </Link>
+      <div className="mt-8 flex flex-wrap gap-4">
+        <Link href="/courses/a1" className="text-[var(--accent)]">
+          Begin with A1
+        </Link>
+        <Link href="/exam" className="text-[var(--accent)]">
+          Open practice papers
+        </Link>
+      </div>
     </main>
   );
 }

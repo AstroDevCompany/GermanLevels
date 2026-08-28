@@ -113,6 +113,15 @@ export function isAdjacentTransposition(a: string, b: string): boolean {
   return false;
 }
 
+export function looksGermanTask(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (/[äöüÄÖÜß]/.test(trimmed)) return true;
+  return /^(Wo|Was|Wer|Wen|Wem|Wann|Wie|Warum|Wieso|Welche|Welcher|Welches|Wohin|Woher|Womit|Wofür|Worüber|Wozu|Stimmt|Ist |Hat |Haben |Können |Muss |Soll |Darf |Wird |Wurde )/i.test(
+    trimmed,
+  );
+}
+
 export function uniqueWords(values: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];

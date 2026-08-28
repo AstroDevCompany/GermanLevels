@@ -15,12 +15,12 @@ export default function HomePage() {
           </p>
           <UserGreeting className="mt-3 text-[var(--accent)]" />
           <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
-            German that starts on the page, then moves into your hands.
+            German that gets you through the day — and onto a certificate.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-[var(--muted)]">
-            Read tiny texts first. Write short, correct sentences next. Then climb
-            through {counts.chapters} chapters and {counts.lessons} interactive
-            lessons — drag, tap, type, and listen.
+            A1 and A2 are built for real talk: café, train, doctor. Every level also
+            trains the four exam papers: Lesen, Hören, Schreiben, Sprechen.{" "}
+            {counts.chapters} chapters, {counts.lessons} lessons, plus timed mocks.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -29,8 +29,11 @@ export default function HomePage() {
             >
               Start at A1
             </Link>
-            <Link href="/courses" className="chip">
-              Browse all levels
+            <Link href="/conversations" className="chip">
+              Everyday conversations
+            </Link>
+            <Link href="/exam" className="chip">
+              Try a mock exam
             </Link>
           </div>
         </div>

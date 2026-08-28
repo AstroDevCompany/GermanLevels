@@ -19,8 +19,8 @@ export const LEVEL_META: Record<
     nameDe: "A1 · Einstieg",
     stage: "Beginner",
     summary:
-      "Start with sounds and a wide beginner word stock, then write your first German sentences.",
-    focus: ["Alphabet & reading", "Broad vocabulary", "First writing"],
+      "Sounds, café, phone, neighbour — then your first certificate tasks in four skills.",
+    focus: ["Sounds", "Everyday talk", "First certificate tasks"],
   },
   a2: {
     id: "a2",
@@ -28,8 +28,8 @@ export const LEVEL_META: Record<
     nameDe: "A2 · Grundlage",
     stage: "Elementary",
     summary:
-      "Handle everyday life and add the rest of a 2000-word beginner stock: shopping, travel, health, and short messages in the past.",
-    focus: ["Daily situations", "Perfekt", "Notes & emails"],
+      "Shops, travel, health, pharmacy, appointments — the A2 paper plus conversations you can actually use.",
+    focus: ["Daily situations", "Perfekt", "Notes, email, talk"],
   },
   b1: {
     id: "b1",
@@ -37,8 +37,8 @@ export const LEVEL_META: Record<
     nameDe: "B1 · Selbstständig",
     stage: "Intermediate",
     summary:
-      "Share opinions, follow longer texts, and write clear connected German.",
-    focus: ["Opinions", "Subclauses", "Formal writing"],
+      "Share opinions, follow longer texts, and sit a B1-shaped paper: reading, listening, writing, speaking.",
+    focus: ["Opinions", "Formal mail", "Mock exam"],
   },
   b2: {
     id: "b2",
@@ -46,8 +46,8 @@ export const LEVEL_META: Record<
     nameDe: "B2 · Fortgeschritten",
     stage: "Upper-intermediate",
     summary:
-      "Argue with nuance, read editorials, and control passive, Konjunktiv II, and style.",
-    focus: ["Nuance", "Essays", "Idioms"],
+      "Argue with nuance, read editorials, and control passive and Konjunktiv II — B2 paper skills.",
+    focus: ["Essays", "Listening twice", "Spoken stance"],
   },
   c1: {
     id: "c1",
@@ -55,8 +55,8 @@ export const LEVEL_META: Record<
     nameDe: "C1 · Kompetent",
     stage: "Advanced",
     summary:
-      "Move in academic, professional, and literary German with control and precision.",
-    focus: ["Register", "Academic writing", "Rhetoric"],
+      "Move in academic and professional German with hedges, unpack Amtsdeutsch, and practise a C1-shaped paper.",
+    focus: ["Register", "Abstracts", "Q&A"],
   },
 };
 

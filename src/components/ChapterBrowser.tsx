@@ -34,6 +34,16 @@ export function ChapterBrowser({
       <h1 className="mt-3 text-4xl font-semibold tracking-tight">{chapter.title}</h1>
       <p className="mt-2 text-lg text-[var(--muted)]">{chapter.titleDe}</p>
       <p className="mt-5 max-w-2xl leading-8">{chapter.blurb}</p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link href={`/exam/${levelId}`} className="chip">
+          {levelId.toUpperCase()} mock exam
+        </Link>
+        {(levelId === "a1" || levelId === "a2" || levelId === "b1") && (
+          <Link href="/conversations" className="chip">
+            Everyday conversations
+          </Link>
+        )}
+      </div>
       {chapter.concepts?.length ? (
         <ul className="mt-6 grid gap-3">
           {chapter.concepts.map((concept) => (

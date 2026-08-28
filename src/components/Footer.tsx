@@ -7,14 +7,15 @@ export function Footer() {
         <div>
           <p className="font-semibold">GermanLevels</p>
           <p className="mt-2 text-sm text-[var(--muted)]">
-            A1 to C1, built for reading first, then writing, then the rest of the climb.
+            A1 to C1 for certificates, and A/B for the conversations you have between papers.
           </p>
         </div>
         <div>
           <p className="text-sm font-semibold">Learn</p>
           <div className="mt-2 grid gap-1 text-sm text-[var(--muted)]">
             <Link href="/courses">Courses</Link>
-            <Link href="/practice">Practice</Link>
+            <Link href="/conversations">Conversations</Link>
+            <Link href="/exam">Mock exams</Link>
             <Link href="/grammar">Grammar</Link>
             <Link href="/vocabulary">Vocabulary</Link>
           </div>
@@ -41,7 +42,7 @@ export function Footer() {
         </div>
       </div>
       <p className="border-t border-[var(--line)] px-4 py-4 text-center text-xs text-[var(--muted)]">
-        Practice aid, not an official exam. Theme follows your system by default.
+        Practice papers follow Goethe/telc skill split. Not an official exam.
       </p>
     </footer>
   );

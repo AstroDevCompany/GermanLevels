@@ -39,6 +39,35 @@ export const GRAMMAR_TOPICS: GrammarTopic[] = [
     ],
   },
   {
+    slug: "accusative",
+    title: "Accusative (den / einen)",
+    level: "A2",
+    summary: "Direct objects: masculine changes, feminine and neuter look like nominative.",
+    points: [
+      "Ich möchte einen Kaffee. Ich kaufe den Pullover.",
+      "die/eine and das/ein stay the same in accusative singular.",
+      "Learn the article with the noun — gender decides the ending.",
+    ],
+    examples: [
+      { de: "Ich möchte einen Kaffee, bitte.", en: "I would like a coffee, please." },
+      { de: "Sie kauft die Tüte.", en: "She is buying the bag." },
+    ],
+  },
+  {
+    slug: "separable-verbs",
+    title: "Separable verbs",
+    level: "A2",
+    summary: "In a main clause the prefix goes last: Ich stehe um sieben auf.",
+    points: [
+      "Present: prefix at the end. Perfekt: aufgestanden, angekommen.",
+      "Modal + separable: Ich muss um sieben aufstehen — prefix stays on the infinitive.",
+    ],
+    examples: [
+      { de: "Ich stehe um sieben auf.", en: "I get up at seven." },
+      { de: "Der Zug kommt um zehn an.", en: "The train arrives at ten." },
+    ],
+  },
+  {
     slug: "perfekt",
     title: "Perfekt (spoken past)",
     level: "A2",
@@ -66,6 +95,21 @@ export const GRAMMAR_TOPICS: GrammarTopic[] = [
     examples: [
       { de: "Hier darf man nicht rauchen.", en: "You are not allowed to smoke here." },
       { de: "Ich möchte einen Termin.", en: "I would like an appointment." },
+    ],
+  },
+  {
+    slug: "weil",
+    title: "weil vs deshalb",
+    level: "A2",
+    summary: "weil parks the verb at the end. deshalb starts a new main clause.",
+    points: [
+      "Ich bleibe zu Hause, weil ich krank bin — comma, then verb last.",
+      "Es regnet. Deshalb bleibe ich zu Hause — new sentence, verb second.",
+      "This pair is everyday speech and an A2 writing favourite.",
+    ],
+    examples: [
+      { de: "Ich schreibe, weil der Kurs wichtig ist.", en: "I am writing because the course matters." },
+      { de: "Der Kurs ist wichtig. Deshalb schreibe ich.", en: "The course matters. That is why I am writing." },
     ],
   },
   {

@@ -1,4 +1,5 @@
 import type { GrammarConcept, LevelId } from "@/content/types";
+import { A2_CONCEPTS, B1_CONCEPTS, B2_CONCEPTS, C1_CONCEPTS } from "@/content/concepts-plus";
 
 const A1_CONCEPTS: GrammarConcept[] = [
   {
@@ -341,7 +342,13 @@ const A1_CONCEPTS: GrammarConcept[] = [
   },
 ];
 
-const CONCEPTS: GrammarConcept[] = [...A1_CONCEPTS];
+const CONCEPTS: GrammarConcept[] = [
+  ...A1_CONCEPTS,
+  ...A2_CONCEPTS,
+  ...B1_CONCEPTS,
+  ...B2_CONCEPTS,
+  ...C1_CONCEPTS,
+];
 
 export function getConcept(id: string): GrammarConcept | undefined {
   return CONCEPTS.find((item) => item.id === id);

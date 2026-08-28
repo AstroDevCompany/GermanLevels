@@ -13,9 +13,12 @@ const TYPE_FALLBACK: Record<Exercise["type"], number> = {
   matching: 2,
   "drag-order": 7,
   "listen-choice": 8,
+  "listen-comprehension": 8,
   "true-false": 11,
   "multiple-choice": 2,
   "free-production": 17,
+  "speak-response": 10,
+  dialogue: 10,
 };
 
 function addKey(keys: Set<string>, value?: string) {
@@ -89,6 +92,16 @@ function needlesFor(exercise: Exercise): string[] {
   if (exercise.type === "free-production") {
     addKey(keys, exercise.sample);
     addKey(keys, exercise.prompt);
+  }
+  if (exercise.type === "speak-response") {
+    addKey(keys, exercise.sample);
+  }
+  if (exercise.type === "dialogue") {
+    for (const turn of exercise.turns) addKey(keys, turn.de);
+  }
+  if (exercise.type === "listen-comprehension") {
+    addKey(keys, exercise.speak);
+    addKey(keys, exercise.answer);
   }
   if (exercise.target) addKey(keys, exercise.target);
   return [...keys];

@@ -1,4 +1,13 @@
 import { conceptsForChapter, fallbackConcept } from "@/content/concepts";
+import {
+  connectedListening,
+  conversationDialogue,
+  dialogueFromPhrases,
+  germanReadingItems,
+  longReading,
+  rubricFor,
+  speakingPrompt,
+} from "@/content/buildTasks";
 import type {
   Chapter,
   ChapterSource,
@@ -53,32 +62,32 @@ const LESSON_PLAN: LessonSpec[] = [
   { title: "First review", titleDe: "Erste Wiederholung", skill: "mixed", role: "review", focus: "review" },
   { title: "New words", titleDe: "Neue Wörter", skill: "vocab", role: "introduction", focus: "learn" },
   { title: "Build the sentence", titleDe: "Satzbau", skill: "writing", role: "practice", focus: "controlled-practice" },
-  { title: "Listen, then recall", titleDe: "Hören, dann erinnern", skill: "listening", role: "practice", focus: "recall" },
-  { title: "Phrases from memory", titleDe: "Phrasen merken", skill: "vocab", role: "practice", focus: "recall" },
-  { title: "Say the phrase", titleDe: "Die Phrase sagen", skill: "writing", role: "application", focus: "application" },
+  { title: "Listen for the scene", titleDe: "Die Szene hören", skill: "listening", role: "practice", focus: "recall" },
+  { title: "Say it aloud", titleDe: "Laut sagen", skill: "speaking", role: "application", focus: "application" },
+  { title: "In the situation", titleDe: "In der Situation", skill: "speaking", role: "application", focus: "application" },
   { title: "Grammar in focus", titleDe: "Grammatik im Fokus", skill: "grammar", role: "introduction", focus: "learn" },
   { title: "Forms in gaps", titleDe: "Formen in Lücken", skill: "grammar", role: "practice", focus: "controlled-practice" },
   { title: "Read closely", titleDe: "Genau lesen", skill: "reading", role: "practice", focus: "understand" },
   { title: "Read and produce", titleDe: "Lesen und produzieren", skill: "reading", role: "practice", focus: "recall" },
-  { title: "A longer look", titleDe: "Längerer Text", skill: "reading", role: "review", focus: "review" },
+  { title: "Exam-length reading", titleDe: "Lesen wie in der Prüfung", skill: "reading", role: "review", focus: "review" },
   { title: "Write it out", titleDe: "Schreiben", skill: "writing", role: "application", focus: "application" },
   { title: "Your own words", titleDe: "Eigene Sätze", skill: "writing", role: "application", focus: "application" },
-  { title: "Sound and sense", titleDe: "Klang und Sinn", skill: "listening", role: "review", focus: "review" },
+  { title: "Listen twice only", titleDe: "Nur zweimal hören", skill: "listening", role: "review", focus: "review" },
   { title: "Mixed review", titleDe: "Gemischte Wiederholung", skill: "mixed", role: "review", focus: "review" },
-  { title: "Chapter check", titleDe: "Kapiteltest", skill: "mixed", role: "review", focus: "review" },
+  { title: "Chapter exam", titleDe: "Kapitelprüfung", skill: "mixed", role: "review", focus: "review" },
 ];
 
 const VOCAB_EXPANSION_PLAN: LessonSpec[] = [
   { title: "More new words", titleDe: "Noch neue Wörter", skill: "vocab", role: "introduction", focus: "learn" },
   { title: "Practise the set", titleDe: "Die Menge üben", skill: "vocab", role: "practice", focus: "controlled-practice" },
-  { title: "Recall the set", titleDe: "Die Menge erinnern", skill: "vocab", role: "practice", focus: "recall" },
-  { title: "Listen to the set", titleDe: "Die Menge hören", skill: "listening", role: "practice", focus: "recall" },
-  { title: "Use the set", titleDe: "Die Menge anwenden", skill: "writing", role: "application", focus: "application" },
+  { title: "At the counter", titleDe: "An der Theke", skill: "speaking", role: "application", focus: "application" },
+  { title: "Hear the dialogue", titleDe: "Den Dialog hören", skill: "listening", role: "practice", focus: "recall" },
+  { title: "Your spoken reply", titleDe: "Deine mündliche Antwort", skill: "speaking", role: "application", focus: "application" },
   { title: "Another set", titleDe: "Noch eine Menge", skill: "vocab", role: "introduction", focus: "learn" },
   { title: "Build with the set", titleDe: "Sätze bauen", skill: "writing", role: "practice", focus: "controlled-practice" },
   { title: "Read the set", titleDe: "Die Menge lesen", skill: "reading", role: "practice", focus: "understand" },
-  { title: "Write with the set", titleDe: "Mit der Menge schreiben", skill: "writing", role: "application", focus: "application" },
-  { title: "Word check", titleDe: "Wortcheck", skill: "mixed", role: "review", focus: "review" },
+  { title: "Write the message", titleDe: "Die Nachricht schreiben", skill: "writing", role: "application", focus: "application" },
+  { title: "Situation check", titleDe: "Situationscheck", skill: "mixed", role: "review", focus: "review" },
 ];
 
 function lessonPlanFor(levelId: LevelId): LessonSpec[] {
@@ -134,7 +143,7 @@ function mc(
     answer,
     speak: extra?.speak,
     explain: extra?.explain,
-    promptDe: extra?.promptDe,
+    promptDe: extra?.promptDe ?? prompt,
     modality: "recognition",
   };
 }
@@ -151,10 +160,6 @@ function vocabRows(items: VocabItem[]): TeachRow[] {
           ? `Remember ${getArticle(item.de)} with the noun.`
           : undefined),
   }));
-}
-
-function phraseRows(items: Phrase[]): TeachRow[] {
-  return items.map((item) => ({ de: item.de, en: item.en, note: item.note }));
 }
 
 function sentenceRows(items: { de: string; en: string }[]): TeachRow[] {
@@ -268,12 +273,12 @@ function gapOptions(answer: string, pool: string[], seed: string): string[] {
 
 function blankToken(sentence: string): { sentence: string; answer: string } | null {
   const tokens = splitGerman(sentence).filter((token) => !/^[.,!?]$/.test(token));
-  const verb = tokens.find((token) =>
-    /^(bin|bist|ist|sind|seid|komme|kommst|kommt|wohne|wohnst|wohnt|gehe|gehst|geht|heiße|heißt|habe|hast|hat)$/i.test(
+  const grammar = tokens.find((token) =>
+    /^(bin|bist|ist|sind|seid|habe|hast|hat|haben|war|hatte|kann|muss|will|soll|darf|möchte|weil|dass|wenn|obwohl|den|dem|einen|einem|wird|wurde|wäre|hätte|würde|könnte)$/i.test(
       token,
     ),
   );
-  const hole = verb ?? tokens[Math.min(1, tokens.length - 1)];
+  const hole = grammar ?? tokens[Math.min(1, tokens.length - 1)];
   if (!hole) return null;
   return { sentence: sentence.replace(hole, "___"), answer: hole };
 }
@@ -394,7 +399,12 @@ function makeTeaching(args: {
     }
   }
 
-  if (spec.focus === "recall" || (spec.role === "practice" && hideForms)) {
+  if (
+    (spec.focus === "recall" || (spec.role === "practice" && hideForms)) &&
+    spec.skill !== "listening" &&
+    spec.skill !== "speaking" &&
+    spec.skill !== "reading"
+  ) {
     if (concept?.forms?.length) {
       cards.push(
         listCard(
@@ -424,18 +434,21 @@ function makeTeaching(args: {
     const writing = writings[number >= 16 ? 1 : 0] ?? writings[0];
     cards.push({
       id: "teach-apply",
-      kind: "model",
-      eyebrow: "Application",
+      kind: spec.skill === "speaking" ? "situation" : "model",
+      eyebrow: spec.skill === "speaking" ? "Situation" : "Application",
       phase: "application",
       title: concept?.applicationPrompt ?? writing?.prompt ?? "Write a few sentences",
       titleDe: concept?.applicationPromptDe ?? writing?.promptDe,
-      body: "Study the model here. The next step hides it so you write from memory.",
+      body:
+        spec.skill === "speaking"
+          ? "You are in the scene. Hear the other person, then answer. English is a last resort."
+          : "Study the model here. The next step hides it so you write from memory.",
       points: writing?.hints ?? concept?.commonMistakes.slice(0, 3),
       speak: concept?.applicationSample ?? writing?.sample,
     });
   }
 
-  if (spec.role === "review") {
+  if (spec.role === "review" && spec.skill !== "listening") {
     const reviewWords = uniqueWords(
       [...recycled, ...fresh].map((item) => item.de),
     ).length
@@ -474,17 +487,24 @@ function makeTeaching(args: {
     }
   }
 
-  if (spec.skill === "listening" && phrases.length) {
-    cards.push(
-      listCard(
-        "teach-listen",
-        "Understand",
-        "Phrases you will hear",
-        phraseRows(phrases.slice(0, 8)),
-        "Read them now. Tap a line if you need the English. Next you hear them, then you produce them.",
-        "understand",
-      ),
-    );
+  if (spec.skill === "listening") {
+    cards.push({
+      id: "teach-listen-brief",
+      kind: "situation",
+      eyebrow: spec.role === "review" ? "Prüfung" : "Szene",
+      phase: "understand",
+      title: spec.role === "review" ? "Nur zweimal hören" : "Die Szene hören",
+      titleDe: spec.role === "review" ? "Wie in der Prüfung" : "Zuerst hören, dann antworten",
+      body:
+        spec.role === "review"
+          ? "A short connected text. Two plays. Questions in German. No phrase list beforehand — that would not be the exam."
+          : "You will hear a short stretch of German, then answer in German. Two plays, like the exam room.",
+      points: [
+        "Fragen auf Deutsch.",
+        "Zweimal abspielen, dann aus dem Gedächtnis.",
+        "Englisch bleibt versteckt.",
+      ],
+    });
   }
 
   if (spec.role === "introduction" && source.skill === "reading" && readings[0] && number === 1) {
@@ -567,9 +587,7 @@ function makeExercises(args: {
   const pool = used.length ? used : vocab.slice(0, 12);
   const vocabDe = vocab.map(displayWord);
   const vocabEn = vocab.map((item) => item.en);
-  const phraseEn = phrases.map((item) => item.en);
   const allDe = uniqueWords([...vocabDe, ...phrases.map((item) => item.de), ...sentences.map((item) => item.de)]);
-  const allEn = uniqueWords([...vocabEn, ...phraseEn, ...sentences.map((item) => item.en)]);
   const metaBase = {
     conceptId: concept?.id,
   };
@@ -594,11 +612,11 @@ function makeExercises(args: {
         tag(
           mc(
             makeId("rec", exercises.length + i),
-            `What does “${item.de}” mean?`,
+            `Was bedeutet „${item.de}“?`,
             item.en,
             vocabEn,
             `${seed}-r-${i}`,
-            { speak: item.de, explain: `${item.de} = ${item.en}` },
+            { speak: item.de, explain: `${item.de} = ${item.en}`, promptDe: `Was bedeutet „${item.de}“?` },
           ),
           {
             ...metaBase,
@@ -618,7 +636,8 @@ function makeExercises(args: {
           {
             type: "type-answer",
             id: makeId("recall", exercises.length + i),
-            prompt: `How do you say “${item.en}”?`,
+            prompt: `Wie sagt man „${item.en}“ auf Deutsch?`,
+            promptDe: `Wie sagt man „${item.en}“ auf Deutsch?`,
             answer: uniqueWords([item.de, stripArticle(item.de)]),
             hint: item.hint ?? (getArticle(item.de) ? `Article: ${getArticle(item.de)}` : undefined),
             speak: item.de,
@@ -642,7 +661,8 @@ function makeExercises(args: {
           {
             type: "type-answer",
             id: makeId("form", i),
-            prompt: `How do you say “${row.en}”?`,
+            prompt: `Wie sagt man „${row.en}“?`,
+            promptDe: `Wie sagt man „${row.en}“?`,
             answer: uniqueWords([row.de, row.de.replace("/", " "), row.de.split("/")[0]?.trim() ?? row.de]),
             speak: row.de,
           },
@@ -667,7 +687,8 @@ function makeExercises(args: {
           {
             type: "fill-blank",
             id: makeId("gap", exercises.length + i),
-            prompt: "Complete the sentence.",
+            prompt: "Ergänze den Satz.",
+            promptDe: "Ergänze den Satz.",
             sentence: gap.sentence,
             answer: [gap.answer, gap.answer.replace(/^[A-ZÄÖÜ]/, (c) => c.toLowerCase())],
             hint: item.en,
@@ -695,7 +716,8 @@ function makeExercises(args: {
           {
             type: "fill-blank",
             id: makeId("art", i),
-            prompt: "Fill in the correct article.",
+            prompt: "Welcher Artikel passt?",
+            promptDe: "Welcher Artikel passt?",
             sentence: `___ ${stripArticle(item.de)}`,
             answer: article,
             options: seededShuffle(["der", "die", "das"], `${seed}-a-${i}`),
@@ -722,7 +744,8 @@ function makeExercises(args: {
           {
             type: "drag-order",
             id: makeId("order", exercises.length + i),
-            prompt: "Arrange the words into a correct German sentence.",
+            prompt: "Bring die Wörter in die richtige Reihenfolge.",
+            promptDe: "Bring die Wörter in die richtige Reihenfolge.",
             words: seededShuffle(words, `${seed}-w-${i}`),
             answer: words,
             translation: item.en,
@@ -747,7 +770,8 @@ function makeExercises(args: {
           {
             type: "type-answer",
             id: makeId("tr", exercises.length + i),
-            prompt: `Write in German: “${item.en}”`,
+            prompt: `Schreib auf Deutsch: „${item.en}“`,
+            promptDe: `Schreib auf Deutsch: „${item.en}“`,
             answer: [item.de, item.de.replace(/[.!?]/g, "").trim()],
             speak: item.de,
           },
@@ -771,11 +795,12 @@ function makeExercises(args: {
           type: "free-production",
           id: "produce",
           prompt: concept?.applicationPrompt ?? writing?.prompt ?? "Write 2–3 German sentences about this topic.",
-          promptDe: concept?.applicationPromptDe ?? writing?.promptDe,
+          promptDe: concept?.applicationPromptDe ?? writing?.promptDe ?? "Schreib 2–3 Sätze auf Deutsch.",
           sample: concept?.applicationSample ?? writing?.sample ?? models[0]?.de ?? "",
           keywords: concept?.applicationKeywords ?? writing?.hints.slice(0, 3),
           minSentences: 2,
           hints: writing?.hints,
+          rubric: rubricFor(levelId, source.slug, writing),
         },
         {
           ...metaBase,
@@ -796,7 +821,8 @@ function makeExercises(args: {
         {
           type: "matching",
           id: makeId("match", exercises.length),
-          prompt: "Match German to meaning. This is recognition — recall comes next.",
+          prompt: "Ordne Deutsch und Bedeutung.",
+          promptDe: "Ordne Deutsch und Bedeutung.",
           pairs,
         },
         { ...metaBase, modality: "recognition", phase: "learn", errorCategory: "vocabulary" },
@@ -804,8 +830,22 @@ function makeExercises(args: {
     );
   }
 
+  function addSpeaking() {
+    exercises.push(
+      tag(speakingPrompt(writings, phrases, seed), {
+        ...metaBase,
+        target: concept?.title ?? "speaking",
+      }),
+    );
+    const dialogue =
+      conversationDialogue(levelId, seed) ??
+      dialogueFromPhrases(source.title, source.titleDe, phrases);
+    if (dialogue) exercises.push(tag(dialogue, { ...metaBase }));
+  }
+
   let passage: Lesson["passage"];
   let grammarNote: string | undefined = source.grammar[0];
+  const examCheck = spec.title === "Chapter exam" || spec.title === "Situation check";
 
   if (spec.focus === "learn" || spec.role === "introduction") {
     if (forms.length) addCompletion(models, 6);
@@ -825,15 +865,36 @@ function makeExercises(args: {
     addCompletion(models, 6);
     addArticles(isA1 ? 4 : 6);
     addConstruction(models, 4);
-  } else if (spec.focus === "recall" && spec.skill !== "listening" && spec.skill !== "reading") {
+  } else if (
+    spec.focus === "recall" &&
+    spec.skill !== "listening" &&
+    spec.skill !== "reading" &&
+    spec.skill !== "speaking"
+  ) {
     if (forms.length) addFormRecall(Math.min(6, forms.length));
     addRecall(pool, 6);
     addTranslation(models, 2);
+  } else if (spec.role === "application" && spec.skill === "speaking") {
+    addSpeaking();
+    addProduction();
   } else if (spec.role === "application") {
-    addTranslation(models, 6);
+    addTranslation(models, levelId === "c1" || levelId === "b2" ? 3 : 6);
     addConstruction(models.slice(0, 4), 2);
     addProduction();
-  } else if (spec.focus === "review" && spec.skill !== "listening" && spec.skill !== "reading" && spec.title !== "Chapter check") {
+    if (levelId === "a1" || levelId === "a2" || levelId === "b1") {
+      exercises.push(
+        tag(speakingPrompt(writings, phrases, `${seed}-sp`), {
+          ...metaBase,
+          target: "speaking",
+        }),
+      );
+    }
+  } else if (
+    spec.focus === "review" &&
+    spec.skill !== "listening" &&
+    spec.skill !== "reading" &&
+    !examCheck
+  ) {
     addMatching(pool, 6);
     addRecall(pool, 4);
     addCompletion(models, 2);
@@ -842,47 +903,23 @@ function makeExercises(args: {
   }
 
   if (spec.skill === "listening") {
-    const usePhrases = spec.role === "review" && phrases.length > 0;
-    const listenItems = (usePhrases ? phrases : pool).slice(0, 6);
-    listenItems.forEach((item, i) => {
-      const de = "de" in item ? item.de : "";
-      const en = "en" in item ? item.en : "";
-      if (!de) return;
-      exercises.push(
-        tag(
-          {
-            type: "listen-choice",
-            id: makeId("listen", i),
-            prompt: "Choose the meaning.",
-            speak: de,
-            options: seededShuffle(
-              uniqueWords([en, ...pickDistractors(usePhrases ? phraseEn : vocabEn, en, 3, `${seed}-l-${i}`)]),
-              `${seed}-lo-${i}`,
-            ),
-            answer: en,
-            explain: `${de} = ${en}`,
-          },
-          { ...metaBase, modality: "recognition", phase: "understand", target: de, errorCategory: "vocabulary" },
-        ),
-      );
-      exercises.push(
-        tag(
-          {
-            type: "type-answer",
-            id: makeId("listen-recall", i),
-            prompt: `Now recall: how do you say “${en}”?`,
-            answer: uniqueWords([de, stripArticle(de)]),
-            speak: de,
-          },
-          { ...metaBase, modality: "recall", phase: "recall", target: de, errorCategory: "vocabulary" },
-        ),
-      );
+    const scriptReading = spec.role === "review" ? longReading(levelId, seed) : readings[0];
+    const script =
+      (scriptReading?.text
+        ?? phrases.slice(0, 6).map((item) => item.de).join(" ")
+        ?? "").trim() || "Guten Tag. Wie geht es Ihnen? Ich hätte gern Hilfe, bitte.";
+    connectedListening(script, scriptReading, seed, spec.role === "review" ? 4 : 3).forEach((item) => {
+      exercises.push(tag(item, { ...metaBase }));
     });
   }
 
+  if (spec.skill === "speaking" && spec.role !== "application") {
+    addSpeaking();
+  }
+
   if (spec.skill === "reading" && !(spec.role === "introduction" && number === 1)) {
-    const idx = spec.focus === "understand" ? 0 : spec.focus === "recall" ? 1 : 2;
-    const selected = readings[idx % Math.max(readings.length, 1)] ?? readings[0];
+    const examText = spec.focus === "review" || spec.title.startsWith("Exam-length");
+    const selected = examText ? longReading(levelId, `${seed}-read`) : readings[spec.focus === "understand" ? 0 : 1] ?? readings[0];
     if (selected) {
       passage = {
         title: selected.title,
@@ -890,20 +927,8 @@ function makeExercises(args: {
         text: selected.text,
         translation: selected.translation,
       };
-      selected.questions.slice(0, spec.focus === "review" ? 6 : 4).forEach((q, i) => {
-        exercises.push(
-          tag(
-            {
-              type: "multiple-choice",
-              id: makeId("rq", i),
-              prompt: q.question,
-              options: q.options,
-              answer: q.answer,
-              explain: q.explain,
-            },
-            { ...metaBase, modality: "recognition", phase: "understand", errorCategory: "vocabulary" },
-          ),
-        );
+      germanReadingItems(selected, seed, examText ? 6 : 4).forEach((item) => {
+        exercises.push(tag(item, { ...metaBase }));
       });
       const snippet = selected.text.split(/[.!?]/)[0]?.trim();
       if (snippet && spec.focus !== "understand") {
@@ -912,7 +937,8 @@ function makeExercises(args: {
             {
               type: "type-answer",
               id: "copy-sense",
-              prompt: `Write this idea in German (from the text): “${selected.translation.split(/[.!?]/)[0]?.trim()}”`,
+              prompt: "Schreib den ersten Satz aus dem Text.",
+              promptDe: "Schreib den ersten Satz aus dem Text.",
               answer: uniqueWords([snippet, `${snippet}.`]),
               speak: snippet,
             },
@@ -925,7 +951,8 @@ function makeExercises(args: {
             {
               type: "drag-order",
               id: "rebuild-line",
-              prompt: "Rebuild the first line of the text.",
+              prompt: "Bau die erste Zeile wieder zusammen.",
+              promptDe: "Bau die erste Zeile wieder zusammen.",
               words: seededShuffle(words, `${seed}-line`),
               answer: words,
               speak: snippet,
@@ -937,34 +964,25 @@ function makeExercises(args: {
     }
   }
 
-  if (spec.title === "Chapter check") {
-    addRecall(seededShuffle(vocab, `${seed}-q`).slice(0, 6), 6);
+  if (examCheck) {
+    addRecall(seededShuffle(vocab, `${seed}-q`).slice(0, 4), 4);
     addConstruction(seededShuffle(sentences, `${seed}-qs`).slice(0, 2), 2);
-    const quizReading = readings[readings.length - 1] ?? readings[0];
-    if (quizReading) {
-      passage = {
-        title: quizReading.title,
-        titleDe: quizReading.titleDe,
-        text: quizReading.text,
-        translation: quizReading.translation,
-      };
-      quizReading.questions.slice(0, 2).forEach((q, i) => {
-        exercises.push(
-          tag(
-            {
-              type: "multiple-choice",
-              id: makeId("quiz-r", i),
-              prompt: q.question,
-              options: q.options,
-              answer: q.answer,
-              explain: q.explain,
-            },
-            { ...metaBase, modality: "recognition", phase: "review" },
-          ),
-        );
-      });
-    }
-    addTranslation(seededShuffle(sentences, `${seed}-qt`).slice(0, 4), 4);
+    const quizReading = longReading(levelId, `${seed}-exam`);
+    passage = {
+      title: quizReading.title,
+      titleDe: quizReading.titleDe,
+      text: quizReading.text,
+      translation: quizReading.translation,
+    };
+    germanReadingItems(quizReading, `${seed}-eq`, 3).forEach((item) => {
+      exercises.push(tag(item, { ...metaBase, phase: "review" }));
+    });
+    const script = phrases.slice(0, 5).map((item) => item.de).join(" ")
+      || sentences.slice(0, 3).map((item) => item.de).join(" ");
+    connectedListening(script, readings[0], `${seed}-el`, 2).forEach((item) => {
+      exercises.push(tag(item, { ...metaBase }));
+    });
+    addSpeaking();
     addProduction();
   }
 
@@ -975,7 +993,8 @@ function makeExercises(args: {
           {
             type: "type-answer",
             id: makeId("ph-type", i),
-            prompt: `Write this in German: “${item.en}”`,
+            prompt: `Schreib auf Deutsch: „${item.en}“`,
+            promptDe: `Schreib auf Deutsch: „${item.en}“`,
             answer: [item.de, item.de.replace(/[!?]/g, "").trim()],
             hint: item.note ?? item.de.split(" ")[0],
             speak: item.de,
@@ -992,11 +1011,15 @@ function makeExercises(args: {
       if (exercise.type === "drag-order") return exercise.answer.length > 1;
       if (exercise.type === "fill-blank") return Boolean(exercise.answer);
       if (exercise.type === "free-production") return Boolean(exercise.sample || exercise.prompt);
+      if (exercise.type === "speak-response") return Boolean(exercise.sample);
+      if (exercise.type === "dialogue") return exercise.turns.length >= 2;
+      if (exercise.type === "listen-comprehension") return Boolean(exercise.speak && exercise.answer);
       return true;
     });
   }
 
   function padQuiz() {
+    if (spec.skill === "speaking" || spec.skill === "listening" || spec.skill === "reading") return;
     const remaining = () => Math.max(0, maxItems - exercises.length);
     if (!remaining()) return;
     const unusedVocab = [...pool, ...vocab].filter(
@@ -1011,7 +1034,7 @@ function makeExercises(args: {
   }
 
   padQuiz();
-  const maxMc = spec.skill === "reading" || spec.title === "Chapter check" ? 8 : isA1 ? 4 : 6;
+  const maxMc = spec.skill === "reading" || examCheck ? 8 : isA1 ? 4 : 6;
   const limited = capRecognition(keepValid(exercises), maxMc);
   exercises.length = 0;
   exercises.push(...limited);
@@ -1039,6 +1062,15 @@ function attachLessonRefs(concepts: GrammarConcept[], lessons: Lesson[]): Gramma
 
 function roleSummary(spec: LessonSpec, source: ChapterSource, concept?: GrammarConcept): string {
   const topic = concept?.title ?? source.title;
+  if (spec.skill === "listening") {
+    return `${topic}: connected speech, twice only, questions in German.`;
+  }
+  if (spec.skill === "speaking") {
+    return `${topic}: a situation. Listen, answer, keep the conversation going.`;
+  }
+  if (spec.title.startsWith("Exam-length") || spec.title === "Chapter exam") {
+    return `${topic}: exam-shaped reading, listening, writing, and a spoken turn.`;
+  }
   if (spec.role === "introduction") {
     return `${topic}: learn the forms, read examples, then a little controlled practice.`;
   }
@@ -1049,7 +1081,7 @@ function roleSummary(spec: LessonSpec, source: ChapterSource, concept?: GrammarC
     return `${topic}: the table stays hidden. Produce the German from meaning.`;
   }
   if (spec.role === "application") {
-    return `${topic}: write a few sentences of your own.`;
+    return `${topic}: write, then speak — a real reply, not only a gap.`;
   }
   return `${topic}: mix recognition and recall, including words from earlier lessons.`;
 }
@@ -1109,8 +1141,8 @@ function buildLessons(
     return {
       id,
       number,
-      title: spec.title,
-      titleDe: spec.titleDe,
+      title: `${spec.title} · ${source.title.split(/[&·]/)[0]?.trim() ?? source.title}`,
+      titleDe: `${spec.titleDe} · ${source.titleDe.split(/und|,/)[0]?.trim() ?? source.titleDe}`,
       skill: spec.skill,
       role: spec.role,
       summary: roleSummary(spec, source, concept),
@@ -1133,7 +1165,7 @@ function poolFallback(vocab: VocabItem[], _seed: string, concept?: GrammarConcep
       {
         type: "type-answer",
         id: makeId("fallback", i),
-        prompt: `How do you say “${item.en}”?`,
+        prompt: `Wie sagt man „${item.en}“?`,
         answer: uniqueWords([item.de, stripArticle(item.de)]),
         speak: item.de,
       },

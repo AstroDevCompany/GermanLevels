@@ -44,7 +44,14 @@ function expectedText(exercise: Exercise): string {
     return exercise.pairs.map((pair) => `${pair.left} = ${pair.right}`).join("; ");
   }
   if (exercise.type === "drag-order") return exercise.answer.join(" ");
-  if (exercise.type === "free-production") return exercise.sample;
+  if (exercise.type === "free-production" || exercise.type === "speak-response") return exercise.sample;
+  if (exercise.type === "dialogue") {
+    return exercise.turns
+      .filter((turn) => turn.speaker === "you")
+      .map((turn) => turn.de)
+      .join("; ");
+  }
+  if (exercise.type === "listen-comprehension") return exercise.answer;
   const answer = exercise.answer;
   return Array.isArray(answer) ? String(answer[0] ?? "") : String(answer ?? "");
 }
@@ -116,7 +123,7 @@ export function classifyAnswer(
     }
   }
 
-  if (exercise.modality === "recognition" || exercise.type === "multiple-choice" || exercise.type === "listen-choice") {
+  if (exercise.modality === "recognition" || exercise.type === "multiple-choice" || exercise.type === "listen-choice" || exercise.type === "listen-comprehension") {
     return { kind: "forgotten-vocabulary", category: category === "other" ? "vocabulary" : category, target };
   }
 

@@ -33,14 +33,22 @@ export default function ProgressPage() {
           Open profile
         </Link>
       </p>
-      {progress.lastLesson ? (
-        <Link
-          href={`/courses/${progress.lastLesson.level}/${progress.lastLesson.chapter}/${progress.lastLesson.lesson}`}
-          className="mt-6 inline-flex rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
-        >
-          Continue last lesson
+      <div className="mt-6 flex flex-wrap gap-3">
+        {progress.lastLesson ? (
+          <Link
+            href={`/courses/${progress.lastLesson.level}/${progress.lastLesson.chapter}/${progress.lastLesson.lesson}`}
+            className="inline-flex rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
+          >
+            Continue last lesson
+          </Link>
+        ) : null}
+        <Link href="/exam" className="chip">
+          Mock exams
         </Link>
-      ) : null}
+        <Link href="/conversations" className="chip">
+          Conversations
+        </Link>
+      </div>
       {ready && (insights.length || recentErrors.length) ? (
         <section className="mt-8 rounded-3xl border border-[var(--line)] bg-[var(--bg-elev)] p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
