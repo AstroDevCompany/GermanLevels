@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { WelcomeModal } from "@/components/WelcomeModal";
+import { GermanWordSpeaker } from "@/components/GermanWordSpeaker";
 import {
   applyPreferences,
   DEFAULT_PREFERENCES,
@@ -242,6 +243,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <AppContext.Provider value={value}>
         {children}
+        <GermanWordSpeaker speed={prefs.speechRate} />
         {showOnboarding ? (
           <WelcomeModal
             prefs={prefs}

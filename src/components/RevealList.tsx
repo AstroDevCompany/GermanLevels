@@ -78,12 +78,16 @@ export function RevealList({
                   onClick={() => toggle(index)}
                   aria-expanded={revealed}
                 >
-                  <p className={`font-medium ${prompt === "de" ? articleClass(row.de) : ""}`}>
+                  <p
+                    lang={prompt === "de" ? "de" : undefined}
+                    className={`font-medium ${prompt === "de" ? articleClass(row.de) : ""}`}
+                  >
                     {shown}
                   </p>
                   {revealed ? (
                     <>
                       <p
+                        lang={prompt === "en" ? "de" : undefined}
                         className={`mt-2 text-sm ${
                           prompt === "en" ? articleClass(row.de) : "text-[var(--muted)]"
                         }`}

@@ -108,8 +108,19 @@ html {
   scroll-behavior: smooth;
 }
 
-html[data-reduced-motion="on"] {
-  scroll-behavior: auto;
+.german-word-outline {
+  position: fixed;
+  pointer-events: none;
+  z-index: 80;
+  box-sizing: border-box;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-2) 35%, transparent);
+}
+
+.german-word-outline.is-playing {
+  border-width: 2px;
+  box-shadow: 0 0 0 2px var(--glow);
 }
 
 body {

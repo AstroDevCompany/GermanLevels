@@ -30,7 +30,9 @@ export function LevelChapters({ level }: { level: Level }) {
             <p className="text-sm text-[var(--muted)]">Chapter {chapter.number}</p>
             <p className="mt-2 text-sm capitalize text-[var(--muted)]">{chapter.skill}</p>
             <h2 className="mt-3 text-xl font-medium">{chapter.title}</h2>
-            <p className="mt-2 text-[var(--muted)]">{chapter.titleDe}</p>
+            <p lang="de" className="mt-2 text-[var(--muted)]">
+              {chapter.titleDe}
+            </p>
             <p className="mt-4 max-w-2xl leading-7 text-sm text-[var(--muted)]">{chapter.blurb}</p>
             <p className="mt-5 text-sm">{chapter.lessons.length} lessons</p>
             <ProgressMark percent={percent} started={started} />

@@ -32,7 +32,9 @@ export function ChapterBrowser({
       <p className="mt-6 text-sm text-[var(--muted)]">Chapter {chapter.number}</p>
       <p className="mt-2 text-sm capitalize text-[var(--muted)]">{chapter.skill}</p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight">{chapter.title}</h1>
-      <p className="mt-2 text-lg text-[var(--muted)]">{chapter.titleDe}</p>
+      <p lang="de" className="mt-2 text-lg text-[var(--muted)]">
+        {chapter.titleDe}
+      </p>
       <p className="mt-5 max-w-2xl leading-8">{chapter.blurb}</p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href={`/exam/${levelId}`} className="chip">
@@ -100,7 +102,9 @@ export function ChapterBrowser({
                   </p>
                   <p className="mt-2 capitalize text-sm text-[var(--muted)]">{lesson.skill}</p>
                   <p className="mt-3 font-medium">{lesson.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{lesson.titleDe}</p>
+                  <p lang="de" className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    {lesson.titleDe}
+                  </p>
                   <p className="mt-4 text-sm text-[var(--muted)]">{lesson.estimatedMinutes} min</p>
                   <ProgressMark percent={percent} started={started} />
                 </Link>

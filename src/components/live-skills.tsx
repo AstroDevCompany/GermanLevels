@@ -276,7 +276,7 @@ export function DialogueExerciseView({
   return (
     <div className="mt-5 grid gap-4">
       <p className="rounded-2xl border border-[var(--line)] px-4 py-3 leading-7">
-        {exercise.settingDe}
+        <span lang="de">{exercise.settingDe}</span>
         <span className="mt-1 block text-sm text-[var(--muted)]">{exercise.setting}</span>
       </p>
       <div ref={scroller} className="grid max-h-72 gap-2 overflow-auto rounded-2xl border border-[var(--line)] p-4">
@@ -290,13 +290,17 @@ export function DialogueExerciseView({
             }`}
           >
             <span className="text-xs text-[var(--muted)]">{item.speaker === "npc" ? "Gegenüber" : "Du"}</span>
-            <span className="mt-1 block">{item.de}</span>
+            <span lang="de" className="mt-1 block">
+              {item.de}
+            </span>
           </p>
         ))}
         {turn?.speaker === "npc" ? (
           <p className="max-w-[90%] rounded-2xl bg-[color-mix(in_oklab,var(--accent)_12%,transparent)] px-3 py-2 text-sm">
             <span className="text-xs text-[var(--muted)]">Gegenüber</span>
-            <span className="mt-1 block">{heardNpc ? turn.de : "…"}</span>
+            <span lang="de" className="mt-1 block">
+              {heardNpc ? turn.de : "…"}
+            </span>
             <SpeakButton
               text={turn.de}
               className="mt-2"

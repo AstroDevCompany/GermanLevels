@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:tts": "tsx --test src/lib/tts/generate.test.ts",
-    "test:xp": "tsx --test src/lib/xp.test.ts"
+    "test:xp": "tsx --test src/lib/xp.test.ts",
+    "test:speak": "tsx --test src/lib/german-speak.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/Providers";
-import { requestSpeechUrl, type ClientSpeechError } from "@/lib/tts/client";
+import { playGermanSpeech } from "@/lib/tts/playback";
+import type { ClientSpeechError } from "@/lib/tts/client";
 
 type SpeakState = "idle" | "loading" | "playing" | "error";
 
@@ -21,12 +22,11 @@ export function SpeakButton({
 }) {
   const { prefs } = useApp();
   const [state, setState] = useState<SpeakState>("idle");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const tokenRef = useRef(0);
 
   useEffect(() => {
     return () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
+      tokenRef.current += 1;
     };
   }, [text]);
 
@@ -34,24 +34,23 @@ export function SpeakButton({
 
   async function play() {
     if (disabled || state === "loading" || state === "playing") return;
-    audioRef.current?.pause();
+    const token = tokenRef.current + 1;
+    tokenRef.current = token;
     setState("loading");
     try {
-      const url = await requestSpeechUrl(text, {
+      await playGermanSpeech(text, {
         speed: prefs.speechRate,
-        language: "de",
+        onStart: () => {
+          if (token !== tokenRef.current) return;
+          setState("playing");
+          onPlay?.();
+        },
       });
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => setState("idle");
-      audio.onerror = () => setState("error");
-      await audio.play();
-      setState("playing");
-      onPlay?.();
+      if (token === tokenRef.current) setState("idle");
     } catch (error) {
       const code = (error as ClientSpeechError).code;
       console.warn("[tts] playback unavailable", code ?? "provider_error");
-      setState("error");
+      if (token === tokenRef.current) setState("error");
     }
   }
 
@@ -67,6 +66,7 @@ export function SpeakButton({
         event.stopPropagation();
         void play();
       }}
+      data-no-speak=""
       disabled={disabled || state === "loading" || state === "playing"}
       aria-busy={state === "loading"}
       aria-label={state === "error" ? "Speech unavailable" : `Play German audio: ${text}`}

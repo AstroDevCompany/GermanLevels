@@ -328,8 +328,10 @@ export function LessonPlayer({
             {keepPassage && lesson.passage ? (
               <article className="rounded-3xl border border-[var(--line)] bg-[var(--bg-elev)] p-6 sm:p-8">
                 <p className="text-sm text-[var(--muted)]">Text for the questions</p>
-                <h2 className="mt-2 font-medium">{lesson.passage.titleDe}</h2>
-                <p className="reading-serif mt-5 whitespace-pre-wrap text-lg leading-8">
+                <h2 lang="de" className="mt-2 font-medium">
+                  {lesson.passage.titleDe}
+                </h2>
+                <p lang="de" className="reading-serif mt-5 whitespace-pre-wrap text-lg leading-8">
                   {lesson.passage.text}
                 </p>
               </article>
@@ -378,13 +380,19 @@ function TeachPanel({
     <section className="rounded-3xl border border-[var(--line)] bg-[var(--bg-elev)] p-6 sm:p-8">
       <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{card.eyebrow}</p>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight">{card.title}</h2>
-      {card.titleDe ? <p className="mt-2 text-[var(--muted)]">{card.titleDe}</p> : null}
+      {card.titleDe ? (
+        <p lang="de" className="mt-2 text-[var(--muted)]">
+          {card.titleDe}
+        </p>
+      ) : null}
       {card.body ? <p className="mt-5 max-w-2xl leading-8 text-[var(--muted)]">{card.body}</p> : null}
 
       {card.speak && (card.kind === "reading" || card.kind === "model" || card.kind === "situation") ? (
         <div className="mt-6">
           <SpeakButton text={card.speak} />
-          <p className="reading-serif mt-4 whitespace-pre-wrap text-lg leading-8">{card.speak}</p>
+          <p lang="de" className="reading-serif mt-4 whitespace-pre-wrap text-lg leading-8">
+            {card.speak}
+          </p>
         </div>
       ) : card.speak ? (
         <div className="mt-6">
