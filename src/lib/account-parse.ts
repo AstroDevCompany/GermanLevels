@@ -1,4 +1,4 @@
-import { emptyProgress, type ProgressState } from "@/lib/progress";
+import { fromProgressData, type ProgressState } from "@/lib/progress";
 import {
   DEFAULT_PREFERENCES,
   type Preferences,
@@ -52,16 +52,5 @@ export function parsePreferences(input: unknown): Preferences | null {
 
 export function parseProgress(input: unknown): ProgressState | null {
   if (!input || typeof input !== "object") return null;
-  const value = input as ProgressState;
-  return {
-    ...emptyProgress(),
-    results: value.results && typeof value.results === "object" ? value.results : {},
-    starred: Array.isArray(value.starred)
-      ? value.starred.filter((item) => typeof item === "string")
-      : [],
-    xp: Number(value.xp) || 0,
-    lastLesson: value.lastLesson,
-    days: value.days && typeof value.days === "object" ? value.days : {},
-    errors: value.errors && typeof value.errors === "object" ? value.errors : {},
-  };
+  return fromProgressData(input);
 }

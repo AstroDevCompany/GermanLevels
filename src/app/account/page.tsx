@@ -37,6 +37,9 @@ export default function AccountPage() {
           your account.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/profile" className="rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]">
+            Profile
+          </Link>
           <Link href="/settings" className="chip">
             Settings
           </Link>

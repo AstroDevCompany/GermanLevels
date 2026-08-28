@@ -6,7 +6,7 @@ import {
   DEFAULT_PREFERENCES,
   type Preferences,
 } from "@/lib/preferences";
-import { emptyProgress, type ProgressState } from "@/lib/progress";
+import { fromProgressData, type ProgressState } from "@/lib/progress";
 
 export const SESSION_COOKIE = "gl_session";
 const SESSION_DAYS = 30;
@@ -93,8 +93,7 @@ export function prefsFromRow(row?: PrefRow | null): Preferences {
 }
 
 export function progressFromData(data: unknown): ProgressState {
-  if (!data || typeof data !== "object") return emptyProgress();
-  return { ...emptyProgress(), ...(data as ProgressState) };
+  return fromProgressData(data);
 }
 
 export async function createSession(userId: string) {

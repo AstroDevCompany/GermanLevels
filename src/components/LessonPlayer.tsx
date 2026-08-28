@@ -203,7 +203,16 @@ export function LessonPlayer({
         <h1 className="mt-3 text-3xl font-semibold">Lesson complete</h1>
         <p className="mt-4 leading-7 text-[var(--muted)]">
           You scored {score} / {total}
-          {practice ? " on targeted review." : " on the practice. XP is saved on this device."}
+          {practice ? " on targeted review." : " on the practice."}
+          {progress.lastXp ? (
+            <>
+              {" "}
+              +{progress.lastXp.lesson} XP
+              {progress.lastXp.streak
+                ? ` and +${progress.lastXp.streak} XP for your weekly streak.`
+                : "."}
+            </>
+          ) : null}
         </p>
         <div className="mt-8 flex flex-wrap gap-4">
           <button type="button" className="chip" onClick={goBack}>

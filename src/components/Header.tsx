@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { ProfileHud } from "@/components/ProfileHud";
 
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/courses", label: "Courses" },
   { href: "/practice", label: "Practice" },
   { href: "/progress", label: "Progress" },
+  { href: "/profile", label: "Profile" },
   { href: "/grammar", label: "Grammar" },
   { href: "/vocabulary", label: "Vocabulary" },
   { href: "/settings", label: "Settings" },
@@ -21,8 +23,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header)] backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-end px-4 py-3 md:justify-center sm:px-6">
-        <nav className="hidden items-center gap-8 text-sm md:flex">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <ProfileHud />
+        <nav className="hidden items-center gap-5 text-sm lg:flex xl:gap-7">
           {LINKS.map((link) => {
             const active =
               link.href === "/"
@@ -42,7 +45,7 @@ export function Header() {
         </nav>
         <button
           type="button"
-          className="rounded-xl border border-[var(--line)] px-4 py-2 text-sm md:hidden"
+          className="rounded-xl border border-[var(--line)] px-4 py-2 text-sm lg:hidden"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
         >
@@ -50,7 +53,7 @@ export function Header() {
         </button>
       </div>
       {open ? (
-        <nav className="grid gap-3 border-t border-[var(--line)] px-4 py-4 md:hidden">
+        <nav className="grid gap-3 border-t border-[var(--line)] px-4 py-4 lg:hidden">
           {LINKS.map((link) => (
             <Link
               key={link.href}

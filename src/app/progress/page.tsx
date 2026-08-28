@@ -5,12 +5,15 @@ import { getLevels } from "@/content/index";
 import { useApp } from "@/components/Providers";
 import { UserGreeting } from "@/components/UserGreeting";
 import { lessonKey, streak } from "@/lib/progress";
+import { levelProgress } from "@/lib/xp";
 import { errorInsights, formatLastSeen } from "@/lib/errors";
 import { categoryLabel } from "@/lib/targeted";
 
 export default function ProgressPage() {
   const { progress, ready, user } = useApp();
   const levels = getLevels();
+  const stats = levelProgress(progress.xp);
+  const days = ready ? streak(progress.days) : 0;
   const completed = Object.values(progress.results).filter((item) => item.completed).length;
   const insights = errorInsights(progress.errors ?? {});
   const recentErrors = Object.values(progress.errors ?? {})
@@ -24,8 +27,11 @@ export default function ProgressPage() {
       <UserGreeting className="mt-2 text-[var(--accent)]" />
       <p className="mt-3 text-[var(--muted)]">
         {user
-          ? `Saved to your account. ${ready ? `${completed} lesson${completed === 1 ? "" : "s"} done · ${progress.xp} XP · ${streak(progress.days)}-day streak.` : "Loading…"}`
-          : `Saved on this device. ${ready ? `${completed} lesson${completed === 1 ? "" : "s"} done · ${progress.xp} XP · ${streak(progress.days)}-day streak.` : "Loading…"}`}
+          ? `Saved to your account. ${ready ? `${completed} lesson${completed === 1 ? "" : "s"} done · level ${stats.level} · ${progress.xp} XP · ${days}-day streak.` : "Loading…"}`
+          : `Saved on this device. ${ready ? `${completed} lesson${completed === 1 ? "" : "s"} done · level ${stats.level} · ${progress.xp} XP · ${days}-day streak.` : "Loading…"}`}{" "}
+        <Link href="/profile" className="text-[var(--accent)]">
+          Open profile
+        </Link>
       </p>
       {progress.lastLesson ? (
         <Link
