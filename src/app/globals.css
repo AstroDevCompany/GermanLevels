@@ -118,9 +118,54 @@ html {
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-2) 35%, transparent);
 }
 
+.german-word-outline.is-loading {
+  border-style: dashed;
+}
+
 .german-word-outline.is-playing {
   border-width: 2px;
   box-shadow: 0 0 0 2px var(--glow);
+}
+
+.german-word-status {
+  position: fixed;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 16rem;
+  pointer-events: none;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--ink);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--ink) 12%, transparent);
+}
+
+.german-word-status-error {
+  color: var(--danger);
+}
+
+.german-word-spinner {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1.5px solid color-mix(in oklab, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: german-word-spin 0.7s linear infinite;
+}
+
+@keyframes german-word-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html[data-reduced-motion="on"] .german-word-spinner {
+  animation: none;
+  border-top-color: var(--accent);
 }
 
 body {

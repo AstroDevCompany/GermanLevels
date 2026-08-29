@@ -4,26 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import { blockedSpeakTarget, speakableFromPoint } from "@/lib/german-speak";
 import { playGermanSpeech, stopGermanSpeech } from "@/lib/tts/playback";
 
-type HoveredWord = {
+type WordBox = {
   word: string;
   rects: Array<{ top: number; left: number; width: number; height: number }>;
 };
 
+type SpeakStatus = "idle" | "loading" | "playing" | "error";
+
 export function GermanWordSpeaker({ speed }: { speed: number }) {
-  const [hover, setHover] = useState<HoveredWord | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const [hover, setHover] = useState<WordBox | null>(null);
+  const [active, setActive] = useState<WordBox | null>(null);
+  const [status, setStatus] = useState<SpeakStatus>("idle");
   const speedRef = useRef(speed);
+  const statusRef = useRef(status);
   speedRef.current = speed;
+  statusRef.current = status;
 
   useEffect(() => {
-    function clear() {
-      setHover(null);
-    }
-
     function updateFromPoint(x: number, y: number) {
       const hit = speakableFromPoint(x, y);
       if (!hit) {
-        clear();
+        setHover(null);
         return;
       }
       setHover({
@@ -42,7 +43,8 @@ export function GermanWordSpeaker({ speed }: { speed: number }) {
     }
 
     function onScroll() {
-      clear();
+      setHover(null);
+      if (statusRef.current === "idle") setActive(null);
     }
 
     async function onClick(event: MouseEvent) {
@@ -54,13 +56,31 @@ export function GermanWordSpeaker({ speed }: { speed: number }) {
         event.preventDefault();
         event.stopPropagation();
       }
-      setPlaying(true);
+      const box: WordBox = {
+        word: hit.word,
+        rects: hit.rects.map((rect) => ({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        })),
+      };
+      setActive(box);
+      setStatus("loading");
       try {
-        await playGermanSpeech(hit.word, { speed: speedRef.current });
+        await playGermanSpeech(hit.word, {
+          speed: speedRef.current,
+          onStart: () => setStatus("playing"),
+        });
+        setStatus("idle");
+        setActive(null);
       } catch (error) {
         console.warn("[tts] word playback unavailable", error);
-      } finally {
-        setPlaying(false);
+        setStatus("error");
+        window.setTimeout(() => {
+          setStatus("idle");
+          setActive(null);
+        }, 2200);
       }
     }
 
@@ -77,23 +97,48 @@ export function GermanWordSpeaker({ speed }: { speed: number }) {
     };
   }, []);
 
-  if (!hover) return null;
+  const shown = hover ?? (status !== "idle" ? active : null);
+  const label =
+    status === "loading"
+      ? `Loading “${active?.word ?? ""}”…`
+      : status === "playing"
+        ? `Playing “${active?.word ?? ""}”`
+        : status === "error"
+          ? "Couldn’t play that word"
+          : "";
+  const anchor = (active ?? shown)?.rects[0];
 
   return (
     <>
-      {hover.rects.map((rect, index) => (
+      <div className="sr-only" aria-live="polite">
+        {label}
+      </div>
+      {shown?.rects.map((rect, index) => (
         <span
-          key={`${hover.word}-${index}`}
+          key={`${shown.word}-${index}`}
           data-german-word-outline=""
-          className={`german-word-outline${playing ? " is-playing" : ""}`}
+          className={`german-word-outline${status === "loading" ? " is-loading" : ""}${status === "playing" ? " is-playing" : ""}`}
           style={{
-            top: rect.top - 3,
-            left: rect.left - 3,
-            width: rect.width + 6,
-            height: rect.height + 6,
+            top: rect.top - 2,
+            left: rect.left - 2,
+            width: rect.width + 4,
+            height: rect.height + 4,
           }}
         />
       ))}
+      {status !== "idle" && anchor ? (
+        <div
+          className={`german-word-status german-word-status-${status}`}
+          role="status"
+          style={{
+            top: Math.min(typeof window === "undefined" ? 0 : window.innerHeight - 44, anchor.top + anchor.height + 8),
+            left: Math.min(typeof window === "undefined" ? 0 : window.innerWidth - 220, Math.max(8, anchor.left)),
+          }}
+        >
+          {status === "loading" ? <span className="german-word-spinner" aria-hidden /> : null}
+          {label}
+        </div>
+      ) : null}
     </>
   );
 }

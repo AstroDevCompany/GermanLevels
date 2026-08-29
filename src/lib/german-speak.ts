@@ -122,18 +122,22 @@ export function stripSpeakPunctuation(value: string): string {
   return value.replace(/^[„“”"'(]+|[„“”"'.,!?;:)]+$/g, "").trim();
 }
 
+export function pointHitsRects(
+  x: number,
+  y: number,
+  rects: Array<Pick<DOMRect, "left" | "right" | "top" | "bottom">>,
+  slop = 1,
+): boolean {
+  return rects.some(
+    (rect) => x >= rect.left - slop && x <= rect.right + slop && y >= rect.top - slop && y <= rect.bottom + slop,
+  );
+}
+
 export function wordAt(text: string, index: number): { start: number; end: number; word: string } | null {
-  if (!text) return null;
-  let offset = index;
-  if (offset >= text.length) offset = text.length - 1;
-  if (offset < 0) return null;
-  const at = text[offset] ?? "";
-  if (!WORD_CHAR.test(at) && offset > 0 && WORD_CHAR.test(text[offset - 1] ?? "")) {
-    offset -= 1;
-  }
-  if (!WORD_CHAR.test(text[offset] ?? "")) return null;
-  let start = offset;
-  let end = offset + 1;
+  if (!text || index < 0 || index >= text.length) return null;
+  if (!WORD_CHAR.test(text[index] ?? "")) return null;
+  let start = index;
+  let end = index + 1;
   while (start > 0 && WORD_CHAR.test(text[start - 1] ?? "")) start -= 1;
   while (end < text.length && WORD_CHAR.test(text[end] ?? "")) end += 1;
   const word = stripSpeakPunctuation(text.slice(start, end));
@@ -190,22 +194,32 @@ export function speakableFromPoint(
   const textNode = range.startContainer;
   if (SKIP_TAGS.has(textNode.parentElement?.tagName ?? "")) return null;
   const text = textNode.textContent ?? "";
-  const found = wordAt(text, range.startOffset);
-  if (!found) return null;
-
   const germanContext = inGermanContext(textNode);
-  const speak = germanContext ? stripSpeakPunctuation(found.word) : looksGermanWord(found.word) ? found.word : "";
-  if (!speak || !/[\p{L}]/u.test(speak)) return null;
-  if (!germanContext && speak.length < 2) return null;
-  if (germanContext && speak.length < 2 && !/[äöüÄÖÜß]/.test(speak)) return null;
-  if (ENGLISH_UI.has(speak.toLowerCase())) return null;
+  const seen = new Set<string>();
+  const offsets = [range.startOffset];
+  if (range.startOffset > 0) offsets.push(range.startOffset - 1);
 
-  const wordRange = doc.createRange();
-  wordRange.setStart(textNode, found.start);
-  wordRange.setEnd(textNode, found.end);
-  const rects = [...wordRange.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
-  if (!rects.length) return null;
-  return { word: speak, range: wordRange, rects };
+  for (const offset of offsets) {
+    const found = wordAt(text, offset);
+    if (!found) continue;
+    const key = `${found.start}:${found.end}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const speak = germanContext ? stripSpeakPunctuation(found.word) : looksGermanWord(found.word) ? found.word : "";
+    if (!speak || !/[\p{L}]/u.test(speak)) continue;
+    if (!germanContext && speak.length < 2) continue;
+    if (germanContext && speak.length < 2 && !/[äöüÄÖÜß]/.test(speak)) continue;
+    if (ENGLISH_UI.has(speak.toLowerCase())) continue;
+
+    const wordRange = doc.createRange();
+    wordRange.setStart(textNode, found.start);
+    wordRange.setEnd(textNode, found.end);
+    const rects = [...wordRange.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
+    if (!rects.length || !pointHitsRects(x, y, rects)) continue;
+    return { word: speak, range: wordRange, rects };
+  }
+  return null;
 }
 
 function rangeFromPoint(x: number, y: number, doc: Document): Range | null {
