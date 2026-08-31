@@ -197,6 +197,10 @@ export function isLessonStarted(result?: LessonResult): boolean {
   return Boolean(result?.started || result?.completed || (result?.percent ?? 0) > 0);
 }
 
+export function requiredLessons<T extends { optional?: boolean }>(lessons: T[]): T[] {
+  return lessons.filter((lesson) => !lesson.optional);
+}
+
 export function progressTone(percent: number): "orange" | "yellow" | "green" | "blue" {
   if (percent >= 100) return "blue";
   if (percent > 75) return "green";

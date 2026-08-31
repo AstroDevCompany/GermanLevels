@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Level } from "@/content/types";
-import { isLessonStarted, lessonKey, lessonPercent } from "@/lib/progress";
+import { isLessonStarted, lessonKey, lessonPercent, requiredLessons } from "@/lib/progress";
 import { ProgressMark } from "@/components/ProgressMark";
 import { useApp } from "@/components/Providers";
 
@@ -12,15 +12,17 @@ export function LevelChapters({ level }: { level: Level }) {
   return (
     <div className="mt-10 grid gap-6">
       {level.chapters.map((chapter) => {
-        const percents = chapter.lessons.map((lesson) =>
+        const tracked = requiredLessons(chapter.lessons);
+        const percents = tracked.map((lesson) =>
           lessonPercent(progress.results[lessonKey(level.id, chapter.slug, lesson.id)]),
         );
-        const started = chapter.lessons.some((lesson) =>
+        const started = tracked.some((lesson) =>
           isLessonStarted(progress.results[lessonKey(level.id, chapter.slug, lesson.id)]),
         );
         const percent = percents.length
           ? Math.round(percents.reduce((sum, value) => sum + value, 0) / percents.length)
           : 0;
+        const optionalSpeaking = chapter.lessons.some((lesson) => lesson.optional);
         return (
           <Link
             key={chapter.slug}
@@ -34,7 +36,10 @@ export function LevelChapters({ level }: { level: Level }) {
               {chapter.titleDe}
             </p>
             <p className="mt-4 max-w-2xl leading-7 text-sm text-[var(--muted)]">{chapter.blurb}</p>
-            <p className="mt-5 text-sm">{chapter.lessons.length} lessons</p>
+            <p className="mt-5 text-sm">
+              {tracked.length} lessons
+              {optionalSpeaking ? " · optional speaking" : ""}
+            </p>
             <ProgressMark percent={percent} started={started} />
           </Link>
         );

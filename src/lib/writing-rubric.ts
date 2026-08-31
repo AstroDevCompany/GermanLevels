@@ -195,12 +195,12 @@ export function scoreWriting(text: string, rubric: WritingRubric): RubricScores 
 export function rubricLabel(key: keyof Pick<RubricScores, "content" | "cohesion" | "vocabulary" | "accuracy">): string {
   switch (key) {
     case "content":
-      return "Inhalt";
+      return "Content";
     case "cohesion":
-      return "Aufbau";
+      return "Structure";
     case "vocabulary":
-      return "Wortschatz";
+      return "Vocabulary";
     case "accuracy":
-      return "Korrektheit";
+      return "Accuracy";
   }
 }

@@ -144,6 +144,34 @@ function nextConfidence(attempts: number, kind: ErrorKind): Confidence {
   return "medium";
 }
 
+export function isResolved(record: ErrorRecord): boolean {
+  return record.correctStreak >= 3;
+}
+
+function lookupRecord(
+  errors: Record<string, ErrorRecord>,
+  exercise: Exercise,
+  classified: { category: ErrorCategory; target: string },
+): { id: string; previous?: ErrorRecord } {
+  const target = classified.target;
+  const candidates = [
+    exercise.errorCategory ? errorKey(exercise.errorCategory, target) : "",
+    errorKey(classified.category, target),
+  ].filter(Boolean);
+
+  for (const id of candidates) {
+    if (errors[id]) return { id, previous: errors[id] };
+  }
+
+  const needle = normalizeAnswer(target);
+  if (needle) {
+    const found = Object.values(errors).find((item) => normalizeAnswer(item.target) === needle);
+    if (found) return { id: found.id, previous: found };
+  }
+
+  return { id: candidates[0] ?? errorKey(classified.category, target) };
+}
+
 export function applyAnswer(
   errors: Record<string, ErrorRecord>,
   payload: AnswerPayload,
@@ -158,18 +186,18 @@ export function applyAnswer(
         target,
       }
     : classifyAnswer(payload.given, payload.exercise);
-  const id = errorKey(classified.category, classified.target);
-  const previous = errors[id];
+  const { id, previous } = lookupRecord(errors, payload.exercise, classified);
 
   if (payload.correct) {
     if (!previous) return errors;
+    const streak = payload.exercise.targeted ? 3 : Math.min(3, previous.correctStreak + 1);
     return {
       ...errors,
       [id]: {
         ...previous,
         lastSeen: now,
-        correctStreak: previous.correctStreak + 1,
-        confidence: previous.correctStreak + 1 >= 2 ? "high" : previous.confidence,
+        correctStreak: streak,
+        confidence: streak >= 2 ? "high" : previous.confidence,
       },
     };
   }
@@ -195,7 +223,7 @@ export function applyAnswer(
 
 export function activeErrors(errors: Record<string, ErrorRecord>): ErrorRecord[] {
   return Object.values(errors)
-    .filter((item) => item.correctStreak < 3 && item.attempts > 0)
+    .filter((item) => !isResolved(item) && item.attempts > 0)
     .sort((a, b) => {
       const rank = { low: 0, medium: 1, high: 2 };
       if (rank[a.confidence] !== rank[b.confidence]) {

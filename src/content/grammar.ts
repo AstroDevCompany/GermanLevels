@@ -9,6 +9,21 @@ export type GrammarTopic = {
 
 export const GRAMMAR_TOPICS: GrammarTopic[] = [
   {
+    slug: "pronouns-sein",
+    title: "Pronouns & sein",
+    level: "A1",
+    summary: "ich, du, er, sie, es, wir, ihr, Sie plus bin, bist, ist, sind, seid.",
+    points: [
+      "ich bin, du bist, er/sie/es ist, wir sind, ihr seid, sie/Sie sind.",
+      "Capital Sie is formal you and takes sind, like they: sie sind.",
+      "After sein you name a role or a state: Ich bin Student. Ich bin müde.",
+    ],
+    examples: [
+      { de: "Ich bin Lea. Du bist hier. Er ist müde.", en: "I am Lea. You are here. He is tired." },
+      { de: "Bist du neu? Sind Sie Herr Braun?", en: "Are you new? Are you Mr. Braun?" },
+    ],
+  },
+  {
     slug: "articles-gender",
     title: "Articles & gender",
     level: "A1",

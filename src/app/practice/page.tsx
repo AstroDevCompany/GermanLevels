@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { LessonPlayer } from "@/components/LessonPlayer";
 import { useApp } from "@/components/Providers";
 import type { Lesson } from "@/content/types";
-import { errorInsights } from "@/lib/errors";
+import { errorInsights, type ErrorRecord } from "@/lib/errors";
 import { targetedExercises } from "@/lib/targeted";
 
 export default function PracticePage() {
   const { prefs, progress, ready } = useApp();
-  const insights = useMemo(() => errorInsights(progress.errors ?? {}), [progress.errors]);
-  const exercises = useMemo(() => targetedExercises(progress.errors ?? {}, 8), [progress.errors]);
+  const sessionErrors = useRef<Record<string, ErrorRecord> | undefined>(undefined);
+  if (ready && sessionErrors.current === undefined) {
+    sessionErrors.current = progress.errors ?? {};
+  }
+  const bag = sessionErrors.current ?? {};
+  const insights = useMemo(() => errorInsights(bag), [ready]);
+  const exercises = useMemo(() => targetedExercises(bag, 8), [ready]);
 
   const lesson: Lesson | null = exercises.length
     ? {

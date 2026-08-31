@@ -2,10 +2,12 @@
 
 const CHARS = ["ä", "ö", "ü", "ß", "Ä", "Ö", "Ü"] as const;
 
+type TextField = HTMLInputElement | HTMLTextAreaElement;
+
 export function insertChar(
   value: string,
   char: string,
-  input: HTMLInputElement | null,
+  input: TextField | null,
 ): string {
   const start = input?.selectionStart ?? value.length;
   const end = input?.selectionEnd ?? value.length;

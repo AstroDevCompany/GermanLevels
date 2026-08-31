@@ -23,7 +23,9 @@ export default async function LessonPage({
   const chapterData = getChapter(level, chapter);
   const lesson = getLesson(level, chapter, lessonId);
   if (!chapterData || !lesson) notFound();
-  const next = chapterData.lessons.find((item) => item.number === lesson.number + 1);
+  const next = lesson.optional
+    ? undefined
+    : chapterData.lessons.find((item) => !item.optional && item.number > lesson.number);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">

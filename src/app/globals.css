@@ -305,6 +305,12 @@ html.dark[data-article-colors="on"] .art-das {
   background: color-mix(in oklab, var(--accent) 6%, var(--bg-elev));
 }
 
+.drop-slot-filled {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
+}
+
 @keyframes lesson-in {
   from {
     opacity: 0;

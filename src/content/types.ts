@@ -303,6 +303,7 @@ export type Lesson = {
   titleDe: string;
   skill: Skill;
   role: LessonRole;
+  optional?: boolean;
   summary: string;
   estimatedMinutes: number;
   conceptIds: string[];

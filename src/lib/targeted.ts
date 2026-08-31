@@ -1,5 +1,5 @@
 import type { ErrorCategory, Exercise, Lesson } from "@/content/types";
-import { getArticle, seededShuffle, stripArticle } from "@/lib/german";
+import { getArticle, seededShuffle, splitGermanWords, stripArticle } from "@/lib/german";
 import { activeErrors, type ErrorRecord } from "@/lib/errors";
 
 function fillArticle(record: ErrorRecord, index: number): Exercise {
@@ -23,13 +23,23 @@ function fillArticle(record: ErrorRecord, index: number): Exercise {
   };
 }
 
+function reviewPrompt(record: ErrorRecord): string {
+  const prompt = record.prompt?.trim() ?? "";
+  if (prompt && !/\bTarget:/i.test(prompt) && !/^How do you say this in German\?/i.test(prompt)) {
+    return prompt;
+  }
+  const quoted = prompt.match(/[“"„](.+?)[”"“]/)?.[1];
+  if (quoted && quoted.toLowerCase() !== record.target.toLowerCase()) {
+    return `Type the German for “${quoted}”.`;
+  }
+  return "Type the German word you missed last time.";
+}
+
 function typeRecall(record: ErrorRecord, index: number): Exercise {
   return {
     type: "type-answer",
     id: `target-type-${index}-${record.id}`,
-    prompt: record.prompt?.startsWith("How do you say")
-      ? record.prompt
-      : `How do you say this in German? Target: ${record.target}`,
+    prompt: reviewPrompt(record),
     answer: [record.target, stripArticle(record.target)],
     hint: record.errorKind === "spelling-error" ? "Watch the spelling, including umlauts." : undefined,
     speak: record.target,
@@ -43,7 +53,7 @@ function typeRecall(record: ErrorRecord, index: number): Exercise {
 }
 
 function orderFromTarget(record: ErrorRecord, index: number): Exercise | null {
-  const words = record.target.split(/\s+/).filter(Boolean);
+  const words = splitGermanWords(record.target);
   if (words.length < 2) return null;
   return {
     type: "drag-order",
@@ -99,15 +109,21 @@ export function injectTargetedExercises(
   errors: Record<string, ErrorRecord>,
   maxInject = 2,
 ): Exercise[] {
-  if (lesson.number === 1 || lesson.role === "introduction") return lesson.exercises;
+  if (
+    lesson.optional ||
+    lesson.skill === "speaking" ||
+    lesson.number <= 2 ||
+    lesson.role === "introduction"
+  ) {
+    return lesson.exercises;
+  }
   const needed = targetedExercises(errors, maxInject + 2).filter((item) => {
     const target = item.target ?? "";
     return target && !lesson.exercises.some((exercise) => alreadyTests(exercise, target));
   });
   const extras = needed.slice(0, maxInject);
   if (!extras.length) return lesson.exercises;
-  const at = Math.min(2, lesson.exercises.length);
-  return [...lesson.exercises.slice(0, at), ...extras, ...lesson.exercises.slice(at)];
+  return [...lesson.exercises, ...extras];
 }
 
 export function categoryLabel(category: ErrorCategory): string {

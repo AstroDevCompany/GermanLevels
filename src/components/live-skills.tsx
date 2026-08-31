@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { SpeakButton } from "@/components/SpeakButton";
 import type { Exercise } from "@/content/types";
 import { normalizeAnswer } from "@/lib/german";
@@ -24,6 +24,28 @@ function Continue({
   extra?: ReactNode;
   onNext: () => void;
 }) {
+  const continueRef = useRef<HTMLButtonElement>(null);
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => continueRef.current?.focus());
+    function onKey(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Enter" || event.repeat || event.isComposing) return;
+      const target = event.target;
+      if (target instanceof HTMLTextAreaElement) return;
+      if (target instanceof HTMLAnchorElement) return;
+      if (target instanceof HTMLButtonElement && target !== continueRef.current) return;
+      event.preventDefault();
+      onNextRef.current();
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, []);
+
   return (
     <div
       className={`mt-6 grid gap-4 rounded-2xl border px-5 py-4 ${
@@ -36,6 +58,7 @@ function Continue({
       {explain ? <p className="text-sm leading-7 text-[var(--muted)]">{explain}</p> : null}
       {extra}
       <button
+        ref={continueRef}
         type="button"
         className="rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
         onClick={onNext}
@@ -182,10 +205,17 @@ export function SpeakResponseExerciseView({
       <textarea
         value={typed}
         onChange={(event) => setTyped(event.target.value)}
+        onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+          if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || checked) return;
+          event.preventDefault();
+          if (!(transcript || typed).trim()) return;
+          setChecked(true);
+        }}
         rows={3}
         disabled={checked}
         className="w-full rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3 outline-none focus:border-[var(--accent)]"
         placeholder="Or type what you said"
+        enterKeyHint="done"
       />
       {!checked ? (
         <button
@@ -229,6 +259,7 @@ export function DialogueExerciseView({
   const [hint, setHint] = useState(false);
   const [heardNpc, setHeardNpc] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const turn = exercise.turns[index];
   const done = index >= exercise.turns.length;
 
@@ -240,6 +271,12 @@ export function DialogueExerciseView({
     setHeardNpc(false);
     setHint(false);
   }, [index]);
+
+  useEffect(() => {
+    if (turn?.speaker !== "you") return;
+    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [index, turn?.speaker]);
 
   function accept(text: string) {
     if (!turn || turn.speaker !== "you") return;
@@ -336,11 +373,19 @@ export function DialogueExerciseView({
             </div>
           ) : null}
           <textarea
+            ref={inputRef}
             value={value}
             onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+              if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              accept(value);
+            }}
             rows={2}
             className="w-full rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3 outline-none focus:border-[var(--accent)]"
             placeholder="Deine Zeile…"
+            autoFocus
+            enterKeyHint="send"
           />
           <div className="flex flex-wrap gap-3">
             <button

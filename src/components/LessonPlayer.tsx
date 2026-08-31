@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type RefObject } from "react";
 import Link from "next/link";
 import { GermanChars, insertChar } from "@/components/GermanChars";
 import { RevealList } from "@/components/RevealList";
@@ -8,14 +8,14 @@ import { SpeakButton } from "@/components/SpeakButton";
 import { useApp } from "@/components/Providers";
 import { getChapter } from "@/content/index";
 import type { Exercise, Lesson, LessonPhase, LevelId, TeachCard } from "@/content/types";
-import { answersMatch, articleClass, normalizeAnswer, seededShuffle } from "@/lib/german";
+import { answersMatch, articleClass, isPunctuationToken, normalizeAnswer, seededShuffle } from "@/lib/german";
 import { rubricLabel, scoreWriting } from "@/lib/writing-rubric";
 import {
   DialogueExerciseView,
   ListenComprehensionExercise,
   SpeakResponseExerciseView,
 } from "@/components/live-skills";
-import { lessonKey } from "@/lib/progress";
+import { lessonKey, requiredLessons } from "@/lib/progress";
 import { findTaughtLesson, type TaughtLesson } from "@/lib/review";
 import { injectTargetedExercises } from "@/lib/targeted";
 
@@ -39,6 +39,40 @@ function nextHintValue(current: string, answer: string): string {
   while (matched < limit && current[matched] === answer[matched]) matched += 1;
   if (matched >= answer.length) return answer;
   return answer.slice(0, matched + 1);
+}
+
+function enterConfirms(event: KeyboardEvent<HTMLElement>) {
+  return event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing;
+}
+
+function looksLikeGermanCopy(text: string): boolean {
+  if (/[äöüÄÖÜß]/.test(text)) return true;
+  return /\b(ich|du|und|nicht|eine|einen|dein|deinen|jemand|Schreib|Begrüße|Sage|Sag|Nenne|Bestelle|Fülle|Antworte|Ergänze|Bring)\b/i.test(
+    text,
+  );
+}
+
+function instructionCopy(exercise: Exercise, levelId: LevelId) {
+  let english = exercise.prompt;
+  let german = "promptDe" in exercise ? exercise.promptDe : undefined;
+  if (german && german !== english && looksLikeGermanCopy(english) && !looksLikeGermanCopy(german)) {
+    english = german;
+    german = exercise.prompt;
+  }
+  const beginner = levelId === "a1" || levelId === "a2";
+  const englishOnlyTask = exercise.type === "free-production";
+  if (!german || german === english) return { heading: english, sub: undefined };
+  if (beginner && englishOnlyTask) return { heading: english, sub: undefined };
+  if (beginner) return { heading: english, sub: german };
+  return { heading: german, sub: english };
+}
+
+function useAutoFocus<T extends HTMLElement>(ref: RefObject<T | null>, enabled = true) {
+  useEffect(() => {
+    if (!enabled) return;
+    const id = requestAnimationFrame(() => ref.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [enabled, ref]);
 }
 
 function productionOk(text: string, exercise: Extract<Exercise, { type: "free-production" }>): boolean {
@@ -84,7 +118,8 @@ export function LessonPlayer({
   const { prefs, completeLesson, saveLessonProgress, recordAnswer, starWord, progress } = useApp();
   const teaching = lesson.teaching ?? [];
   const chapterLessons = getChapter(levelId, chapterSlug)?.lessons ?? [];
-  const [exercises] = useState(() =>
+  const requiredCount = requiredLessons(chapterLessons).length;
+  const [exercises, setExercises] = useState(() =>
     practice ? lesson.exercises : injectTargetedExercises(lesson, progress.errors ?? {}),
   );
   const [phase, setPhase] = useState<"teach" | "quiz">(teaching.length ? "teach" : "quiz");
@@ -139,12 +174,23 @@ export function LessonPlayer({
       correct,
       lessonKey: lessonKey(levelId, chapterSlug, lesson.id),
     });
+    let remaining = exercises;
+    if (correct && exercise.targeted && exercise.target) {
+      const needle = normalizeAnswer(exercise.target);
+      remaining = exercises.filter((item, itemIndex) => {
+        if (itemIndex <= index) return true;
+        if (!item.targeted) return true;
+        return normalizeAnswer(item.target ?? "") !== needle;
+      });
+      if (remaining.length !== exercises.length) setExercises(remaining);
+    }
     if (!scored.has(id)) {
       setScored((current) => new Set(current).add(id));
       if (correct) setScore((value) => value + 1);
     }
     const nextScore = scored.has(id) ? score : score + (correct ? 1 : 0);
-    if (index + 1 >= total) {
+    const nextTotal = remaining.length;
+    if (index + 1 >= nextTotal) {
       setDone(true);
       if (!awarded) {
         setAwarded(true);
@@ -154,13 +200,13 @@ export function LessonPlayer({
             chapter: chapterSlug,
             lesson: lesson.id,
             score: nextScore,
-            total,
+            total: nextTotal,
           });
         }
       }
     } else {
       setIndex((value) => value + 1);
-      persist(Math.round(((teachTotal + index + 1) / steps) * 100));
+      persist(Math.round(((teachTotal + index + 1) / (teachTotal + nextTotal)) * 100));
     }
   }
 
@@ -291,7 +337,9 @@ export function LessonPlayer({
               ? `Paper ${lesson.number} of 4`
               : chapterSlug === "conversations"
                 ? "Conversation scene"
-                : `Lesson ${lesson.number} of ${chapterLessons.length || 20}${lesson.role ? ` · ${lesson.role}` : ""}`}
+                : lesson.optional
+                  ? "Speaking exercises · optional"
+                  : `Lesson ${lesson.number} of ${requiredCount || 20}${lesson.role ? ` · ${lesson.role}` : ""}`}
         </p>
         <p className="mt-2 text-sm capitalize text-[var(--muted)]">{lesson.skill}</p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">{lesson.title}</h1>
@@ -316,6 +364,7 @@ export function LessonPlayer({
         {phase === "teach" ? (
           <TeachPanel
             card={teaching[teachIndex]}
+            levelId={levelId}
             starred={progress.starred}
             onStar={starWord}
             isLast={teachIndex + 1 >= teachTotal}
@@ -338,6 +387,7 @@ export function LessonPlayer({
             ) : null}
             <ExerciseCard
               key={exercise.id}
+              levelId={levelId}
               exercise={exercise}
               showHints={prefs.showHints}
               starred={progress.starred}
@@ -359,6 +409,7 @@ export function LessonPlayer({
 
 function TeachPanel({
   card,
+  levelId,
   starred,
   onStar,
   isLast,
@@ -367,6 +418,7 @@ function TeachPanel({
   onContinue,
 }: {
   card: TeachCard;
+  levelId: LevelId;
   starred: string[];
   onStar: (word: string) => void;
   isLast: boolean;
@@ -376,11 +428,15 @@ function TeachPanel({
 }) {
   const [showTranslation, setShowTranslation] = useState(false);
   const promptSide = card.phase === "recall" ? "en" : "de";
+  const beginner = levelId === "a1" || levelId === "a2";
+  const showGermanTitle =
+    Boolean(card.titleDe) &&
+    !(beginner && (card.kind === "model" || card.kind === "situation"));
   return (
     <section className="rounded-3xl border border-[var(--line)] bg-[var(--bg-elev)] p-6 sm:p-8">
       <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{card.eyebrow}</p>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight">{card.title}</h2>
-      {card.titleDe ? (
+      {showGermanTitle ? (
         <p lang="de" className="mt-2 text-[var(--muted)]">
           {card.titleDe}
         </p>
@@ -457,6 +513,7 @@ function TeachPanel({
 }
 
 function ExerciseCard({
+  levelId,
   exercise,
   showHints,
   starred,
@@ -469,6 +526,7 @@ function ExerciseCard({
   reviewHref,
   onReviewCurrent,
 }: {
+  levelId: LevelId;
   exercise: Exercise;
   showHints: boolean;
   starred: string[];
@@ -481,6 +539,7 @@ function ExerciseCard({
   reviewHref: (id: string) => string;
   onReviewCurrent: () => void;
 }) {
+  const { heading, sub } = instructionCopy(exercise, levelId);
   const feedback = {
     review,
     currentLessonId,
@@ -493,10 +552,15 @@ function ExerciseCard({
         <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Targeted review</p>
       ) : null}
       <h2 className={`${exercise.targeted ? "mt-3 " : ""}text-lg font-medium leading-8`}>
-        {"promptDe" in exercise && exercise.promptDe ? exercise.promptDe : exercise.prompt}
+        {heading}
       </h2>
-      {"promptDe" in exercise && exercise.promptDe && exercise.promptDe !== exercise.prompt ? (
-        <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{exercise.prompt}</p>
+      {sub ? (
+        <p
+          lang={levelId === "a1" || levelId === "a2" ? "de" : "en"}
+          className="mt-2 text-sm leading-7 text-[var(--muted)]"
+        >
+          {sub}
+        </p>
       ) : null}
       {exercise.type === "multiple-choice" || exercise.type === "listen-choice" ? (
         <ChoiceExercise
@@ -525,7 +589,7 @@ function ExerciseCard({
         />
       ) : null}
       {exercise.type === "drag-order" ? (
-        <DragOrderExercise exercise={exercise} onResult={onResult} feedback={feedback} />
+        <DragOrderExercise key={exercise.id} exercise={exercise} onResult={onResult} feedback={feedback} />
       ) : null}
       {exercise.type === "matching" ? (
         <MatchingExercise
@@ -683,9 +747,28 @@ function FillBlankExercise({
   const inputRef = useRef<HTMLInputElement>(null);
   const given = placed ?? value;
   const correct = answersMatch(given, exercise.answer);
+  const chips = useMemo(() => {
+    const options = exercise.options ?? [];
+    if (!options.length) return options;
+    if (options.some((option) => answersMatch(option, exercise.answer))) return options;
+    const missing = hintAnswer(exercise.answer);
+    return [...options.slice(0, 3), missing];
+  }, [exercise.answer, exercise.options]);
+  useAutoFocus(inputRef, !checked);
+
+  function confirm() {
+    if (checked) onResult(correct, given);
+    else setChecked(true);
+  }
 
   return (
-    <div className="mt-5">
+    <form
+      className="mt-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        confirm();
+      }}
+    >
       <p className="reading-serif text-lg leading-9">
         {exercise.sentence.split("___").map((part, i, arr) => (
           <span key={part + i}>
@@ -694,27 +777,39 @@ function FillBlankExercise({
               <input
                 ref={inputRef}
                 value={given}
+                readOnly={checked}
                 onChange={(event) => {
                   setPlaced(null);
                   setValue(event.target.value);
                 }}
+                onKeyDown={(event) => {
+                  if (checked || !enterConfirms(event)) return;
+                  event.preventDefault();
+                  confirm();
+                }}
                 className="blank bg-transparent outline-none"
                 aria-label="Missing word"
+                autoComplete="off"
+                autoFocus
+                enterKeyHint="done"
               />
             ) : null}
           </span>
         ))}
       </p>
-      {exercise.options?.length ? (
+      {chips.length ? (
         <div className="mt-5 flex flex-wrap gap-3">
-          {exercise.options.map((option) => (
+          {chips.map((option) => (
             <button
               key={option}
               type="button"
               className="chip"
               aria-pressed={placed === option}
               data-selected={placed === option}
-              onClick={() => setPlaced(option)}
+              onClick={() => {
+                setPlaced(option);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
             >
               {option}
             </button>
@@ -743,9 +838,8 @@ function FillBlankExercise({
       {!checked ? (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
-            type="button"
+            type="submit"
             className="rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
-            onClick={() => setChecked(true)}
           >
             Check
           </button>
@@ -774,7 +868,7 @@ function FillBlankExercise({
           feedback={feedback}
         />
       )}
-    </div>
+    </form>
   );
 }
 
@@ -794,15 +888,37 @@ function TypeExercise({
   const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const correct = answersMatch(value, exercise.answer);
+  useAutoFocus(inputRef, !checked);
+
+  function confirm() {
+    if (checked) onResult(correct, value);
+    else setChecked(true);
+  }
+
   return (
-    <div className="mt-5">
+    <form
+      className="mt-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        confirm();
+      }}
+    >
       <input
         ref={inputRef}
         value={value}
+        readOnly={checked}
         onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (checked || !enterConfirms(event)) return;
+          event.preventDefault();
+          confirm();
+        }}
         className="w-full rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3 outline-none focus:border-[var(--accent)]"
-        placeholder="Type your answer"
+        placeholder="Type the German"
         autoCapitalize="off"
+        autoComplete="off"
+        autoFocus
+        enterKeyHint="done"
       />
       <GermanChars
         disabled={checked}
@@ -823,9 +939,8 @@ function TypeExercise({
       {!checked ? (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
-            type="button"
+            type="submit"
             className="rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
-            onClick={() => setChecked(true)}
           >
             Check
           </button>
@@ -853,7 +968,7 @@ function TypeExercise({
           feedback={feedback}
         />
       )}
-    </div>
+    </form>
   );
 }
 
@@ -866,32 +981,84 @@ function DragOrderExercise({
   onResult: (correct: boolean, given: string) => void;
   feedback: ReviewFeedback;
 }) {
-  const [pool, setPool] = useState(exercise.words);
-  const [slots, setSlots] = useState<(string | null)[]>(
-    exercise.answer.map(() => null),
-  );
+  const answer = useMemo(() => {
+    const words = exercise.answer.filter((token) => !isPunctuationToken(token));
+    return words.length ? words : exercise.answer;
+  }, [exercise.answer]);
+  const bank = useMemo(() => {
+    const words = exercise.words.filter((token) => !isPunctuationToken(token));
+    return words.length ? words : exercise.words;
+  }, [exercise.words]);
+  const [pool, setPool] = useState(bank);
+  const [slots, setSlots] = useState<(string | null)[]>(() => answer.map(() => null));
   const [checked, setChecked] = useState(false);
-  const built = slots.map((slot) => slot ?? "").filter(Boolean);
-  const builtText = built.join(" ").replace(/ ([.,!?;:])/g, "$1");
-  const correct =
-    slots.every(Boolean) &&
-    slots.join(" ") === exercise.answer.join(" ");
+  const dragOrigin = useRef<{ kind: "pool" | "slot"; index: number } | null>(null);
+  const dragged = useRef(false);
+  const placed = slots.filter((slot): slot is string => Boolean(slot));
+  const builtText = placed.join(" ");
+  const correct = placed.length === answer.length && placed.every((word, i) => word === answer[i]);
 
-  function place(word: string, fromPool = true) {
+  function startDrag(kind: "pool" | "slot", index: number, word: string) {
+    return (event: DragEvent<HTMLButtonElement>) => {
+      dragged.current = false;
+      dragOrigin.current = { kind, index };
+      event.dataTransfer.setData("text/plain", word);
+      event.dataTransfer.effectAllowed = "move";
+    };
+  }
+
+  function endDrag() {
+    window.setTimeout(() => {
+      dragged.current = false;
+      dragOrigin.current = null;
+    }, 0);
+  }
+
+  function dropOnSlot(toIndex: number) {
+    const origin = dragOrigin.current;
+    if (!origin) return;
+    dragged.current = true;
+
+    if (origin.kind === "slot") {
+      if (origin.index === toIndex) return;
+      setSlots((current) => {
+        const next = [...current];
+        [next[origin.index], next[toIndex]] = [next[toIndex], next[origin.index]];
+        return next;
+      });
+      return;
+    }
+
+    const word = pool[origin.index];
+    if (!word) return;
+    const displaced = slots[toIndex];
+    setSlots((current) => current.map((slot, i) => (i === toIndex ? word : slot)));
+    setPool((current) => {
+      const next = current.filter((_, i) => i !== origin.index);
+      if (displaced) next.push(displaced);
+      return next;
+    });
+  }
+
+  function dropOnPool() {
+    const origin = dragOrigin.current;
+    if (!origin || origin.kind !== "slot") return;
+    const word = slots[origin.index];
+    if (!word) return;
+    dragged.current = true;
+    setSlots((current) => current.map((slot, i) => (i === origin.index ? null : slot)));
+    setPool((current) => [...current, word]);
+  }
+
+  function place(word: string, poolIndex: number) {
     const empty = slots.findIndex((slot) => slot === null);
     if (empty === -1) return;
     setSlots((current) => current.map((slot, i) => (i === empty ? word : slot)));
-    if (fromPool) {
-      setPool((current) => {
-        const next = [...current];
-        const at = next.indexOf(word);
-        if (at >= 0) next.splice(at, 1);
-        return next;
-      });
-    }
+    setPool((current) => current.filter((_, i) => i !== poolIndex));
   }
 
   function remove(index: number) {
+    if (dragged.current) return;
     const word = slots[index];
     if (!word) return;
     setSlots((current) => current.map((slot, i) => (i === index ? null : slot)));
@@ -906,24 +1073,16 @@ function DragOrderExercise({
       <div className="mt-4 flex flex-wrap gap-2">
         {slots.map((slot, i) => (
           <button
-            key={`${slot}-${i}`}
+            key={`slot-${i}`}
             type="button"
-            className="drop-slot min-w-16 px-3 py-2"
+            draggable={Boolean(slot)}
+            className={`drop-slot min-w-16 px-3 py-2 ${slot ? "drop-slot-filled cursor-grab active:cursor-grabbing" : ""}`}
+            onDragStart={slot ? startDrag("slot", i, slot) : undefined}
+            onDragEnd={endDrag}
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
-              const word = event.dataTransfer.getData("text/plain");
-              if (!word) return;
-              const previous = slots[i];
-              if (previous === word) return;
-              setSlots((current) => current.map((item, idx) => (idx === i ? word : item)));
-              setPool((current) => {
-                const next = [...current];
-                const at = next.indexOf(word);
-                if (at >= 0) next.splice(at, 1);
-                if (previous) next.push(previous);
-                return next;
-              });
+              dropOnSlot(i);
             }}
             onClick={() => slot && remove(i)}
           >
@@ -931,22 +1090,32 @@ function DragOrderExercise({
           </button>
         ))}
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div
+        className="mt-4 flex min-h-12 flex-wrap gap-2"
+        onDragOver={(event) => {
+          if (dragOrigin.current?.kind === "slot") event.preventDefault();
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          dropOnPool();
+        }}
+      >
         {pool.map((word, poolIndex) => (
           <button
-            key={`${word}-${poolIndex}`}
+            key={`pool-${word}-${poolIndex}`}
             type="button"
             draggable
-            onDragStart={(event) => event.dataTransfer.setData("text/plain", word)}
-            onClick={() => place(word)}
-            className="chip"
+            onDragStart={startDrag("pool", poolIndex, word)}
+            onDragEnd={endDrag}
+            onClick={() => place(word, poolIndex)}
+            className="chip cursor-grab active:cursor-grabbing"
           >
             {word}
           </button>
         ))}
       </div>
       <p className="mt-3 text-xs text-[var(--muted)]">
-        Drag or tap words into the slots. Tap a slot to send a word back.
+        Drag or tap words into the slots. Drag a placed word to reorder it. Tap a slot to send a word back.
       </p>
       {!checked ? (
         <button
@@ -959,12 +1128,12 @@ function DragOrderExercise({
       ) : (
         <ResultBar
           correct={correct}
-          explain={exercise.answer.join(" ").replace(/ ([.,!?;:])/g, "$1")}
+          explain={exercise.speak ?? answer.join(" ")}
           onNext={() => onResult(correct, builtText)}
           feedback={feedback}
         />
       )}
-      {built.length ? (
+      {placed.length ? (
         <p className="mt-2 text-sm text-[var(--muted)]">{builtText}</p>
       ) : null}
     </div>
@@ -1166,29 +1335,33 @@ function FreeProductionExercise({
   const [value, setValue] = useState("");
   const [checked, setChecked] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const rubric = exercise.rubric ? scoreWriting(value, exercise.rubric) : null;
   const correct = productionOk(value, exercise);
   const words = value.trim().split(/\s+/).filter(Boolean).length;
   const under = Boolean(exercise.rubric && words < exercise.rubric.minWords);
+  const minWords = exercise.rubric?.minWords;
+  const maxWords = exercise.rubric?.targetWords ?? minWords;
+  useAutoFocus(inputRef, !checked);
   return (
     <div className="mt-5">
-      {exercise.rubric ? (
-        <p className="mb-3 text-sm text-[var(--muted)]">
-          Ziel: etwa {exercise.rubric.targetWords ?? exercise.rubric.minWords} Wörter
-          {exercise.rubric.register ? ` · ${exercise.rubric.register}` : ""}. Scored like a
-          certificate paper: Inhalt, Aufbau, Wortschatz, Korrektheit.
-        </p>
-      ) : null}
       <textarea
+        ref={inputRef}
         value={value}
+        readOnly={checked}
         onChange={(event) => setValue(event.target.value)}
         rows={exercise.rubric && (exercise.rubric.minWords ?? 0) >= 70 ? 10 : 5}
         className="w-full rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3 outline-none focus:border-[var(--accent)]"
         placeholder="Write in German — full sentences, not keywords."
+        autoFocus
+      />
+      <GermanChars
+        disabled={checked}
+        onInsert={(char) => setValue((current) => insertChar(current, char, inputRef.current))}
       />
       <p className={`mt-2 text-xs ${under ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>
-        {words} Wörter
-        {exercise.rubric ? ` · Ziel ${exercise.rubric.minWords}–${exercise.rubric.targetWords ?? exercise.rubric.minWords}` : ""}
+        {words} {words === 1 ? "word" : "words"}
+        {minWords != null ? ` · aim ${minWords}–${maxWords}` : ""}
       </p>
       {exercise.hints?.length ? (
         <div className="mt-3">
@@ -1267,8 +1440,30 @@ function ResultBar({
   onNext: () => void;
   feedback: ReviewFeedback;
 }) {
+  const continueRef = useRef<HTMLButtonElement>(null);
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
   const review = !correct ? feedback.review : null;
   const sameLesson = review?.id === feedback.currentLessonId;
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => continueRef.current?.focus());
+    function onKey(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Enter" || event.repeat || event.isComposing) return;
+      const target = event.target;
+      if (target instanceof HTMLTextAreaElement) return;
+      if (target instanceof HTMLAnchorElement) return;
+      if (target instanceof HTMLButtonElement && target !== continueRef.current) return;
+      event.preventDefault();
+      onNextRef.current();
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, []);
+
   return (
     <div
       className={`mt-6 grid gap-4 rounded-2xl border px-5 py-4 ${
@@ -1299,6 +1494,7 @@ function ResultBar({
           )
         ) : null}
         <button
+          ref={continueRef}
           type="button"
           className="rounded-full bg-[var(--accent)] px-5 py-2 text-[var(--accent-ink)]"
           onClick={onNext}

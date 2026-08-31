@@ -7,6 +7,14 @@ export function splitGerman(sentence: string): string[] {
     .filter(Boolean);
 }
 
+export function isPunctuationToken(token: string): boolean {
+  return /^[.,!?;:…]+$/.test(token.trim());
+}
+
+export function splitGermanWords(sentence: string): string[] {
+  return splitGerman(sentence).filter((token) => !isPunctuationToken(token));
+}
+
 export function normalizeAnswer(value: string): string {
   return value
     .toLowerCase()
@@ -78,7 +86,8 @@ export function pickDistractors(
   count: number,
   seed: string,
 ): string[] {
-  const unique = [...new Set(pool.filter((item) => item !== answer))];
+  const needle = normalizeAnswer(answer);
+  const unique = [...new Set(pool.filter((item) => normalizeAnswer(item) !== needle))];
   return seededShuffle(unique, seed).slice(0, count);
 }
 

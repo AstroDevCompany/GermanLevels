@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Chapter, LevelId } from "@/content/types";
-import { isLessonStarted, lessonKey, lessonPercent } from "@/lib/progress";
+import { isLessonStarted, lessonKey, lessonPercent, requiredLessons } from "@/lib/progress";
 import { ProgressMark } from "@/components/ProgressMark";
 import { RevealList } from "@/components/RevealList";
 import { useApp } from "@/components/Providers";
@@ -84,9 +84,9 @@ export function ChapterBrowser({
       </div>
 
       {tab === "lessons" ? (
-        <section className="mt-8">
+        <section className="mt-8 grid gap-10">
           <div className="grid gap-6 sm:grid-cols-2">
-            {chapter.lessons.map((lesson) => {
+            {requiredLessons(chapter.lessons).map((lesson) => {
               const result = progress.results[lessonKey(levelId, chapter.slug, lesson.id)];
               const percent = lessonPercent(result);
               const started = isLessonStarted(result);
@@ -111,6 +111,41 @@ export function ChapterBrowser({
               );
             })}
           </div>
+          {chapter.lessons.some((lesson) => lesson.optional) ? (
+            <div>
+              <h2 className="text-xl font-medium">Speaking exercises</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--muted)]">
+                Optional. Finish the chapter without this — use it when you want to speak the
+                same material out loud.
+              </p>
+              <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                {chapter.lessons
+                  .filter((lesson) => lesson.optional)
+                  .map((lesson) => {
+                    const result = progress.results[lessonKey(levelId, chapter.slug, lesson.id)];
+                    const percent = lessonPercent(result);
+                    const started = isLessonStarted(result);
+                    return (
+                      <Link
+                        key={lesson.id}
+                        href={`/courses/${levelId}/${chapter.slug}/${lesson.id}`}
+                        className="rounded-3xl border border-dashed border-[var(--line)] bg-[var(--bg-elev)] p-6"
+                      >
+                        <p className="text-xs text-[var(--muted)]">Optional · speaking</p>
+                        <p className="mt-3 font-medium">{lesson.title}</p>
+                        <p lang="de" className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                          {lesson.titleDe}
+                        </p>
+                        <p className="mt-4 text-sm text-[var(--muted)]">
+                          {lesson.estimatedMinutes} min
+                        </p>
+                        <ProgressMark percent={percent} started={started} />
+                      </Link>
+                    );
+                  })}
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : (
         <section className="mt-8">

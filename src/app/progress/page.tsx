@@ -4,9 +4,9 @@ import Link from "next/link";
 import { getLevels } from "@/content/index";
 import { useApp } from "@/components/Providers";
 import { UserGreeting } from "@/components/UserGreeting";
-import { lessonKey, streak } from "@/lib/progress";
+import { lessonKey, requiredLessons, streak } from "@/lib/progress";
 import { levelProgress } from "@/lib/xp";
-import { errorInsights, formatLastSeen } from "@/lib/errors";
+import { errorInsights, formatLastSeen, isResolved } from "@/lib/errors";
 import { categoryLabel } from "@/lib/targeted";
 
 export default function ProgressPage() {
@@ -16,10 +16,11 @@ export default function ProgressPage() {
   const days = ready ? streak(progress.days) : 0;
   const completed = Object.values(progress.results).filter((item) => item.completed).length;
   const insights = errorInsights(progress.errors ?? {});
-  const recentErrors = Object.values(progress.errors ?? {})
-    .filter((item) => item.correctStreak < 3)
-    .sort((a, b) => b.lastSeen - a.lastSeen)
-    .slice(0, 6);
+  const allErrors = Object.values(progress.errors ?? {});
+  const recentErrors = [
+    ...allErrors.filter((item) => !isResolved(item)).sort((a, b) => b.lastSeen - a.lastSeen).slice(0, 6),
+    ...allErrors.filter((item) => isResolved(item)).sort((a, b) => b.lastSeen - a.lastSeen).slice(0, 4),
+  ];
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
@@ -72,35 +73,45 @@ export default function ProgressPage() {
           ) : null}
           {recentErrors.length ? (
             <ul className="mt-4 grid gap-2 text-sm">
-              {recentErrors.map((item) => (
-                <li key={item.id} className="flex flex-wrap justify-between gap-3 border-t border-[var(--line)] pt-3">
-                  <span>
-                    <span className="capitalize">{item.errorKind.replace(/-/g, " ")}</span>
-                    {" · "}
-                    {categoryLabel(item.errorCategory)}
-                    {" · "}
-                    {item.target}
-                    {item.userAnswer ? ` ← ${item.userAnswer}` : ""}
-                  </span>
-                  <span className="text-[var(--muted)]">
-                    {item.confidence} confidence · {item.attempts} attempts · {formatLastSeen(item.lastSeen)}
-                  </span>
-                </li>
-              ))}
+              {recentErrors.map((item) => {
+                const cleared = isResolved(item);
+                return (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap justify-between gap-3 border-t border-[var(--line)] pt-3"
+                  >
+                    <span className={cleared ? "text-[var(--muted)] line-through" : undefined}>
+                      <span className="capitalize">{item.errorKind.replace(/-/g, " ")}</span>
+                      {" · "}
+                      {categoryLabel(item.errorCategory)}
+                      {" · "}
+                      {item.target}
+                      {!cleared && item.userAnswer ? ` ← ${item.userAnswer}` : ""}
+                    </span>
+                    <span className="text-[var(--muted)]">
+                      {cleared
+                        ? "cleared in review"
+                        : `${item.confidence} confidence · ${item.attempts} attempts · ${formatLastSeen(item.lastSeen)}`}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
         </section>
       ) : null}
       <div className="mt-8 grid gap-4">
         {levels.map((level) => {
-          const total = level.chapters.reduce((sum, chapter) => sum + chapter.lessons.length, 0);
+          const total = level.chapters.reduce(
+            (sum, chapter) => sum + requiredLessons(chapter.lessons).length,
+            0,
+          );
           const done = level.chapters.reduce(
             (sum, chapter) =>
               sum +
-              chapter.lessons.filter(
+              requiredLessons(chapter.lessons).filter(
                 (lesson) =>
-                  progress.results[lessonKey(level.id, chapter.slug, lesson.id)]
-                    ?.completed,
+                  progress.results[lessonKey(level.id, chapter.slug, lesson.id)]?.completed,
               ).length,
             0,
           );

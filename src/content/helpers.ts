@@ -82,6 +82,30 @@ function lemmaKey(value: string) {
   return value.replace(/^(der|die|das)\s+/i, "").trim().toLowerCase();
 }
 
+function uniqueByDe<T extends { de: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    const key = item.de.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function uniqueReadings(items: Reading[]): Reading[] {
+  const seen = new Set<string>();
+  const out: Reading[] = [];
+  for (const item of items) {
+    const key = item.text.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 export function mergeChapterExtras(base: ChapterSource, extra?: ChapterExtra): ChapterSource {
   if (!extra) return base;
   const seen = new Set(base.vocab.map((item) => lemmaKey(item.de)));
@@ -95,9 +119,15 @@ export function mergeChapterExtras(base: ChapterSource, extra?: ChapterExtra): C
   return {
     ...base,
     vocab,
-    phrases: extra.phrases?.length ? [...base.phrases, ...extra.phrases] : base.phrases,
-    sentences: extra.sentences?.length ? [...base.sentences, ...extra.sentences] : base.sentences,
-    readings: extra.readings?.length ? [...base.readings, ...extra.readings] : base.readings,
+    phrases: extra.phrases?.length
+      ? uniqueByDe([...base.phrases, ...extra.phrases])
+      : base.phrases,
+    sentences: extra.sentences?.length
+      ? uniqueByDe([...base.sentences, ...extra.sentences])
+      : base.sentences,
+    readings: extra.readings?.length
+      ? uniqueReadings([...base.readings, ...extra.readings])
+      : base.readings,
     writings: extra.writings?.length ? [...base.writings, ...extra.writings] : base.writings,
   };
 }

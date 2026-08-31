@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getLevels } from "@/content/index";
+import { requiredLessons } from "@/lib/progress";
 
 export const metadata: Metadata = { title: "Courses" };
 
@@ -11,8 +12,8 @@ export default function CoursesPage() {
       <h1 className="text-4xl font-semibold tracking-tight">Courses</h1>
       <p className="mt-3 max-w-2xl text-[var(--muted)]">
         Five paths, A1 to C1. A and B also train the conversations of daily life.
-        Every level has a timed mock in four papers. Higher levels keep twenty
-        lessons per chapter; beginners add extra speaking and listening scenes.
+        Every level has a timed mock in four papers. A1 and A2 add extra listening
+        scenes; A1 speaking sits in a separate optional lesson in each chapter.
       </p>
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {levels.map((level) => (
@@ -25,7 +26,11 @@ export default function CoursesPage() {
             <h2 className="mt-1 text-2xl font-semibold">{level.name}</h2>
             <p className="mt-2 text-[var(--muted)]">{level.summary}</p>
             <p className="mt-4 text-sm">
-              {level.chapters.length} chapters · {level.chapters[0]?.lessons.length} lessons each
+              {level.chapters.length} chapters ·{" "}
+              {requiredLessons(level.chapters[0]?.lessons ?? []).length} lessons each
+              {level.chapters[0]?.lessons.some((lesson) => lesson.optional)
+                ? " · optional speaking"
+                : ""}
             </p>
           </Link>
         ))}

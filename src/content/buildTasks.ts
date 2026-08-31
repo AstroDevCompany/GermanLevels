@@ -37,7 +37,7 @@ function generatedReadingItems(reading: Reading, seed: string, count: number): E
     items.push({
       type: "multiple-choice",
       id: makeId("rq-topic", 0),
-      prompt: "Worüber spricht der Text hauptsächlich?",
+      prompt: "What is the text mainly about?",
       promptDe: "Worüber spricht der Text hauptsächlich?",
       options: seededShuffle(
         uniqueWords([
@@ -61,7 +61,7 @@ function generatedReadingItems(reading: Reading, seed: string, count: number): E
       items.push({
         type: "true-false",
         id: makeId("rq-tf", i),
-        prompt: "Stimmt das so im Text?",
+        prompt: "Is this what the text says?",
         promptDe: "Stimmt das so im Text?",
         statement: sentence,
         answer: true,
@@ -77,7 +77,7 @@ function generatedReadingItems(reading: Reading, seed: string, count: number): E
     items.push({
       type: "multiple-choice",
       id: makeId("rq-mc", i),
-      prompt: "Was steht so im Text?",
+      prompt: "Which line is in the text?",
       promptDe: "Was steht so im Text?",
       options: seededShuffle(
         uniqueWords([answer, ...pickDistractors(pool.length ? pool : ["Das steht nicht im Text."], answer, 3, `${seed}-mc-${i}`)]),
@@ -161,7 +161,7 @@ function generatedListening(
     return {
       type: "listen-comprehension" as const,
       id: makeId("lh-s", i),
-      prompt: "Hör genau zu. Du kannst zweimal abspielen.",
+      prompt: "Listen carefully. You can play it twice.",
       promptDe: "Hör genau zu. Du kannst zweimal abspielen.",
       speak: script,
       maxPlays: 2,
@@ -190,7 +190,7 @@ export function connectedListening(
         questions.push({
           type: "listen-comprehension",
           id: makeId("lh", i),
-          prompt: "Hör genau zu. Du kannst zweimal abspielen.",
+          prompt: "Listen carefully. You can play it twice.",
           promptDe: "Hör genau zu. Du kannst zweimal abspielen.",
           speak: script,
           maxPlays: 2,
@@ -214,7 +214,7 @@ export function speakingPrompt(
   seed: string,
 ): SpeakResponseExercise {
   const phrase = phrases[hashIndex(seed, phrases.length)] ?? phrases[0];
-  const writing = writings[0];
+  const writing = writings[hashIndex(seed, Math.max(writings.length, 1))] ?? writings[0];
   const sample = phrase?.de ?? writing?.sample ?? "Guten Tag, ich hätte gern Hilfe.";
   return {
     type: "speak-response",
@@ -237,9 +237,11 @@ export function dialogueFromPhrases(
   setting: string,
   settingDe: string,
   phrases: Phrase[],
+  seed = "dialogue",
 ): DialogueExercise | null {
   if (phrases.length < 4) return null;
-  const turns = phrases.slice(0, 6).map((item, i) => ({
+  const ordered = seededShuffle(phrases, `${seed}-dlg`).slice(0, 6);
+  const turns = ordered.map((item, i) => ({
     speaker: i % 2 === 0 ? ("npc" as const) : ("you" as const),
     de: item.de,
     en: item.en,
